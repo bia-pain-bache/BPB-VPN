@@ -34,6 +34,7 @@ class SettingsPage extends StatelessWidget {
     'qq': 'QQ',
     'random': 'Random',
     'randomized': 'Randomized',
+    'unsafe': 'Unsafe',
   };
 
   @override

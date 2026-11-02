@@ -47,9 +47,14 @@ class UpdateChecker {
     } catch (e) {
       throw UpdateException("Can't reach GitHub: $e");
     }
-    // No release published yet.
-    if (res.statusCode == 404) return null;
-    if (res.statusCode != 200) throw UpdateException('GitHub answered HTTP ${res.statusCode}');
+    if (res.statusCode == 404) {
+      throw const UpdateException(
+        'GitHub returned 404. The repository may be private or have no published release; update status is unknown.',
+      );
+    }
+    if (res.statusCode != 200) {
+      throw UpdateException('GitHub answered HTTP ${res.statusCode}');
+    }
     final Map<String, dynamic> json;
     try {
       json = jsonDecode(res.body) as Map<String, dynamic>;

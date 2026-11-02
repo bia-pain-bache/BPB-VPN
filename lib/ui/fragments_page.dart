@@ -271,7 +271,7 @@ class _FragmentCardState extends State<_FragmentCard> {
                     addLabel: 'Add length',
                     itemLabel: 'Length',
                     ranges: f.lengths,
-                    minValue: 1,
+                    minValue: 0,
                     onChanged: () => _update(() {}),
                   ),
                   _RangeList(
@@ -288,7 +288,7 @@ class _FragmentCardState extends State<_FragmentCard> {
                   _RangeRow(
                     range: f.maxSplit,
                     label: 'Max split',
-                    minValue: 1,
+                    minValue: 0,
                     optional: true,
                     onChanged: widget.onChanged,
                   ),

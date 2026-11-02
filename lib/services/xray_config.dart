@@ -1524,6 +1524,9 @@ class XrayConfigBuilder {
     final host = isCustomCdn ? (cdn.host ?? domain) : domain;
     final sni = isCustomCdn ? (cdn.sni ?? domain) : _randomUpperCase(domain);
     final enableEch = _vless.ech.enabled && !isFragment;
+    final unsafeFingerprint = _vless.tlsFingerprint == 'unsafe';
+    final unsafeCipherSuites =
+        'TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256';
 
     return {
       'protocol': 'vless',
@@ -1543,6 +1546,7 @@ class XrayConfigBuilder {
             'serverName': sni,
             'fingerprint': _vless.tlsFingerprint,
             'alpn': ['http/1.1'],
+            if (unsafeFingerprint) 'cipherSuites': unsafeCipherSuites,
             if (enableEch) 'echConfigList': _echConfigList(_vless.ech),
             // Fetch the ECH config directly, not through the tunnel being set up.
             if (enableEch) 'echSockopt': {'dialerProxy': 'direct'},
@@ -1571,7 +1575,7 @@ class XrayConfigBuilder {
     return ech.serverName != null ? '${ech.serverName}+$server' : server;
   }
 
-  /// Port of BPB's buildWarpOutbound (without the MahsaNG/knocker variant).
+  /// Port of BPB's buildWarpOutbound.
   Map<String, dynamic> _warpOutbound(
     WarpAccount account,
     String endpoint, {
@@ -2002,7 +2006,8 @@ class XrayConfigBuilder {
   static String _dnsHost(String dns) => dnsHostOf(dns);
 
   static dynamic _deepCopy(dynamic value) {
-    if (value is Map) return {for (final e in value.entries) '${e.key}': _deepCopy(e.value)};
+    if (value is Map)
+      return {for (final e in value.entries) '${e.key}': _deepCopy(e.value)};
     if (value is List) return value.map(_deepCopy).toList();
     return value;
   }

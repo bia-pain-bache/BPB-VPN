@@ -41,14 +41,24 @@ void main() {
     expect(update.apkUrl, endsWith('/bpb-1.1.0-armeabi-v7a.apk'));
   });
 
-  test('no update when the latest is this version (or older), or nothing is released yet', () async {
+  test('no update when the latest is this version (or older)', () async {
     expect(
       await UpdateChecker(MockClient((_) async => release('v1.0.0'))).check(installed: '1.0.0', abis: ['arm64-v8a']),
       isNull,
     );
+  });
+
+  test('a 404 is not reported as up to date', () async {
     expect(
-      await UpdateChecker(MockClient((_) async => http.Response('{}', 404))).check(installed: '1.0.0', abis: []),
-      isNull,
+      UpdateChecker(MockClient((_) async => http.Response('{}', 404)))
+          .check(installed: '1.0.0', abis: []),
+      throwsA(
+        isA<UpdateException>().having(
+          (e) => e.message,
+          'message',
+          contains('update status is unknown'),
+        ),
+      ),
     );
   });
 }

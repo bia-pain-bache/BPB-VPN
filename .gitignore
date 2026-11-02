@@ -8,7 +8,6 @@
 !/pubspec.yaml
 !/pubspec.lock
 !/analysis_options.yaml
-!/docs/**
 !/.github/workflows/*.yml
 
 # Icon sources (the launcher, status bar and splash icons are made from these)
