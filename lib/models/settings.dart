@@ -326,25 +326,21 @@ class ChainProxy {
 
 class EchSettings {
   final bool enabled;
-  final String? serverName;
 
   /// The DNS server the ECH config is fetched from: an IP, or DoH with an IP host.
   final String dns;
-  const EchSettings({this.enabled = false, this.serverName, this.dns = '8.8.8.8',
-  });
+  const EchSettings({this.enabled = false, this.dns = '8.8.8.8'});
 
   static EchSettings parse(Object? v) {
     final j = _map(v);
     const d = EchSettings();
     return EchSettings(
       enabled: _bool(j['enabled'], d.enabled),
-      serverName: _strOrNull(j['serverName']),
       dns: _str(j['dns'], d.dns),
     );
   }
 
-  Map<String, dynamic> toJson() => {'enabled': enabled, 'serverName': serverName, 'dns': dns,
-  };
+  Map<String, dynamic> toJson() => {'enabled': enabled, 'dns': dns};
 }
 
 class CustomCdnSettings {

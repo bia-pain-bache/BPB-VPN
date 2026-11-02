@@ -1304,23 +1304,34 @@ void main() {
       return (c['outbounds'] as List).first['streamSettings']['tlsSettings'] as Map;
     }
 
-    final byDefault = await tls({'serverName': 'cloudflare-ech.com'});
+    final byDefault = await tls({});
     expect(byDefault['echConfigList'], 'cloudflare-ech.com+udp://8.8.8.8');
     expect(byDefault['echSockopt'], {'dialerProxy': 'direct'});
 
-    expect((await tls({'dns': '1.1.1.1'}))['echConfigList'], 'udp://1.1.1.1');
-    expect((await tls({'dns': '2001:4860:4860::8888'}))['echConfigList'], 'udp://[2001:4860:4860::8888]',
+    expect(
+      (await tls({'serverName': 'legacy.example'}))['echConfigList'],
+      'cloudflare-ech.com+udp://8.8.8.8',
+    );
+    expect(
+      (await tls({'dns': '1.1.1.1'}))['echConfigList'],
+      'cloudflare-ech.com+udp://1.1.1.1',
+    );
+    expect(
+      (await tls({'dns': '2001:4860:4860::8888'}))['echConfigList'],
+      'cloudflare-ech.com+udp://[2001:4860:4860::8888]',
     );
     expect(
       (await tls({'dns': 'https://[2001:4860:4860::8888]/dns-query',
       }))['echConfigList'],
-      'https://[2001:4860:4860::8888]/dns-query',
+      'cloudflare-ech.com+https://[2001:4860:4860::8888]/dns-query',
     );
     // DoH with an IPv4 host, as in BPB: passed as is.
-    expect((await tls({'dns': 'https://1.1.1.1/dns-query'}))['echConfigList'], 'https://1.1.1.1/dns-query',
+    expect(
+      (await tls({'dns': 'https://1.1.1.1/dns-query'}))['echConfigList'],
+      'cloudflare-ech.com+https://1.1.1.1/dns-query',
     );
     expect(
-      (await tls({'serverName': 'cloudflare-ech.com', 'dns': 'https://1.1.1.1/dns-query',
+      (await tls({'dns': 'https://1.1.1.1/dns-query',
       }))['echConfigList'],
       'cloudflare-ech.com+https://1.1.1.1/dns-query',
     );

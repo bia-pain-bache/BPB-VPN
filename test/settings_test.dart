@@ -118,7 +118,7 @@ void main() {
       'vless': {
         'ports': 'all',
         'speedTestInterval': 30.7,
-        'ech': {'enabled': true, 'serverName': ''},
+        'ech': {'enabled': true, 'serverName': 'legacy.example', 'dns': '1.1.1.1'},
       },
       'fragments': [
         {'packets': '1-4', 'lengths': 'x'},
@@ -134,7 +134,8 @@ void main() {
     expect(p.general.localDns, '8.8.8.8');
     expect(p.vless.ports, [443]);
     expect(p.vless.speedTestInterval, 30);
-    expect(p.vless.ech.serverName, isNull);
+    expect(p.vless.ech.dns, '1.1.1.1');
+    expect(p.vless.ech.toJson(), {'enabled': true, 'dns': '1.1.1.1'});
     expect(p.fragments.single.packets, FragmentPackets.tlsHello,
     ); // not a preset → default
     expect(p.fragments.single.lengths, const [Range(100, 200)]);
@@ -193,6 +194,24 @@ void main() {
     });
     expect(exported.containsKey('warp'), isFalse);
     expect(p.updated('warp.remoteDns', '9.9.9.9').toExportJson()['warp'], {'remoteDns': '9.9.9.9',
+    });
+  });
+
+  test('ECH export keeps DNS but drops the removed SNI setting', () {
+    final p = Profile.fromJson({
+      'vless': {
+        'ech': {
+          'enabled': true,
+          'serverName': 'legacy.example',
+          'dns': '1.1.1.1',
+        },
+      },
+    });
+
+    expect(p.vless.ech.toJson(), {'enabled': true, 'dns': '1.1.1.1'});
+    expect((p.toExportJson()['vless'] as Map)['ech'], {
+      'enabled': true,
+      'dns': '1.1.1.1',
     });
   });
 

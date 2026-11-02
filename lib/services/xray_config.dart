@@ -1477,8 +1477,8 @@ class XrayConfigBuilder {
     };
   }
 
-  /// `[serverName+]udp://IP` for an IP (an IPv6 one in brackets, as a URL needs), or the DoH as
-  /// given, from the ECH settings (BPB's buildTlsSettings).
+  /// `cloudflare-ech.com+udp://IP` for an IP (an IPv6 one in brackets), or the DoH URL as
+  /// given in the ECH settings (BPB's buildTlsSettings).
   String _echConfigList(EchSettings ech) {
     final ip = InternetAddress.tryParse(ech.dns);
     final server = switch (ip?.type) {
@@ -1486,7 +1486,7 @@ class XrayConfigBuilder {
       InternetAddressType.IPv6 => 'udp://[${ech.dns}]',
       _ => ech.dns,
     };
-    return ech.serverName != null ? '${ech.serverName}+$server' : server;
+    return 'cloudflare-ech.com+$server';
   }
 
   /// Port of BPB's buildWarpOutbound.

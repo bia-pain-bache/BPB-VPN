@@ -217,7 +217,7 @@ class SettingsPage extends StatelessWidget {
                 'vless.customCdn.enabled',
                 'Custom CDN',
                 icon: Symbols.cloud_rounded,
-                subtitle: 'Using other CDNs for domain fronting purposes',
+                subtitle: 'Enable for domain fronting',
               ),
               if (p.vless.customCdn.enabled) ...const [
                 ListPref(
@@ -247,18 +247,8 @@ class SettingsPage extends StatelessWidget {
                 'vless.ech.enabled',
                 'TLS ECH',
                 icon: Symbols.encrypted_rounded,
-                subtitle: 'Encrypted Client Hello to hide the real SNI',
+                subtitle: 'Hide the real SNI',
               ),
-              if (p.vless.ech.enabled)
-                const TextPref(
-                  'vless.ech.serverName',
-                  'ECH SNI',
-                  icon: Symbols.host_rounded,
-                  hint: 'cloudflare-ech.com',
-                  help: 'Optional, a valid Cloudflare-hosted domain with ECH enabled.',
-                  allowEmpty: true,
-                  validator: validateDomain,
-                ),
               if (p.vless.ech.enabled)
                 const TextPref(
                   'vless.ech.dns',
@@ -456,7 +446,7 @@ class SettingsPage extends StatelessWidget {
               ListTile(
                 leading: const Icon(Symbols.download_rounded),
                 title: const Text('Get bridges'),
-                subtitle: const Text('Fresh bridges from Tor Project'),
+                subtitle: const Text('Fresh bridges from Tor'),
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const TorBridgesPage()),
@@ -1433,7 +1423,7 @@ class _ExportSettingsTile extends StatelessWidget {
     subtitle: Text(
       download
           ? 'Save settings file to Downloads'
-          : 'Send settings file to other BPB users',
+          : 'Send settings file to other users',
     ),
     onTap: () => _export(context),
   );

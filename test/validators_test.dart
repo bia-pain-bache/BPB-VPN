@@ -82,7 +82,7 @@ void main() {
     expect(validateEchDns('https://8.8.8.8/'), isNotNull);
     expect(validateEchDns('https://8.8.8.8/dns-query?x=1'), isNotNull);
 
-    // ECH SNI: a domain only.
+    // Domain names (used by routing rules).
     expect(validateDomain('cloudflare-ech.com'), isNull);
     expect(validateDomain('8.8.8.8'), isNotNull);
     expect(validateDomain('not a domain'), isNotNull);

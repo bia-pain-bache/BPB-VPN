@@ -56,7 +56,7 @@ bool isCidr(String v) {
 String? validateHost(String v) =>
     isDomain(v) || isIp(v) ? null : 'Enter a domain or IP';
 
-/// ECH SNI (BPB: "The ECH Server Name should be a domain").
+/// Domain name used in routing rules.
 String? validateDomain(String v) => isDomain(v) ? null : 'Enter a domain';
 
 /// A standard DoH URL (BPB's validateDoH): https, with a path ending in /dns-query.
