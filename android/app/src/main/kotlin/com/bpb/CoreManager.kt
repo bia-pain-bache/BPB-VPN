@@ -170,7 +170,8 @@ object CoreManager {
 /** Persists the last config so the service can restart without the Flutter UI (tile, always-on VPN). */
 object ConfigStore {
     private const val PREFS = "bpb_native"
-    private const val CONFIG_FILE = "active_config.json"
+    private const val CONFIG_FILE = "config.json"
+    private const val LEGACY_CONFIG_FILE = "active_config.json"
 
     data class Options(
         val remark: String,
@@ -213,11 +214,16 @@ object ConfigStore {
             .apply()
     }
 
-    fun hasConfig(context: Context): Boolean = File(context.filesDir, CONFIG_FILE).exists()
+    fun hasConfig(context: Context): Boolean =
+        File(context.filesDir, CONFIG_FILE).exists() ||
+            File(context.filesDir, LEGACY_CONFIG_FILE).exists()
 
     fun loadConfig(context: Context): String? {
         val file = File(context.filesDir, CONFIG_FILE)
-        return if (file.exists()) file.readText() else null
+        if (file.exists()) return file.readText()
+        val legacy = File(context.filesDir, LEGACY_CONFIG_FILE)
+        if (!legacy.exists()) return null
+        return legacy.readText().also { file.writeText(it) }
     }
 
     fun loadOptions(context: Context): Options {

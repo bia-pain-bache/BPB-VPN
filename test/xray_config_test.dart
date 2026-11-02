@@ -27,7 +27,8 @@ Future<List<String>> fakeResolve(String host, {required bool ipv6}) async => [
   if (ipv6) '2606:4700::1',
 ];
 
-XrayConfigBuilder builder(Map<String, dynamic> profile, [Map<String, dynamic> device = const {}]) => XrayConfigBuilder(
+XrayConfigBuilder builder(Map<String, dynamic> profile, [Map<String, dynamic> device = const {},
+]) => XrayConfigBuilder(
   Profile.fromJson(profile),
   DeviceSettings.fromJson(device),
   worker: worker,
@@ -98,7 +99,8 @@ void main() {
         'domains': ['sanctioned.example.com'],
       },
       'block': {
-        'presets': {'ads': true, 'malware': true, 'phishing': true, 'quic': true},
+        'presets': {'ads': true, 'malware': true, 'phishing': true, 'quic': true,
+        },
         'domains': ['ads.example.com'],
         'ips': ['1.2.3.4'],
       },
@@ -127,7 +129,8 @@ void main() {
   Map? chainOf(Map<String, dynamic> c) => (c['outbounds'] as List)
       .cast<Map>()
       .where((o) => o['tag'] == 'exit')
-      .where((o) => o['streamSettings']?['sockopt']?['dialerProxy'] == 'exit-dialer')
+      .where((o) => o['streamSettings']?['sockopt']?['dialerProxy'] == 'exit-dialer',
+      )
       .firstOrNull;
 
   test('best ping only uses TLS ports', () async {
@@ -136,7 +139,8 @@ void main() {
         'ports': [443, 80, 2053],
       },
     }).build(ConnectionMode.worker)).config;
-    expect(outboundsOf(c, 'proxy-').map((o) => o['settings']['port']).toSet(), {443, 2053});
+    expect(outboundsOf(c, 'proxy-').map((o) => o['settings']['port']).toSet(), {443, 2053,
+    });
   });
 
   test('config has tun inbound, vless outbounds and UDP block', () async {
@@ -145,10 +149,12 @@ void main() {
     final proxy = (c['outbounds'] as List).first as Map;
     expect(proxy['tag'], 'proxy-1');
     expect(proxy['protocol'], 'vless');
-    expect(proxy['settings'], {'address': proxy['settings']['address'], 'port': 443, 'id': uuid, 'encryption': 'none'});
+    expect(proxy['settings'], {'address': proxy['settings']['address'], 'port': 443, 'id': uuid, 'encryption': 'none',
+    });
     expect(proxy['streamSettings']['wsSettings']['path'], endsWith('?ed=2560'));
     final rules = c['routing']['rules'] as List;
-    expect(rules.any((r) => r['network'] == 'udp' && r['outboundTag'] == 'block'), isTrue);
+    expect(rules.any((r) => r['network'] == 'udp' && r['outboundTag'] == 'block'), isTrue,
+    );
     expect(rules.last['balancerTag'], 'all-proxies');
     dump('worker_best', c);
   });
@@ -165,13 +171,14 @@ void main() {
     for (final b in configs) {
       expect(b.config['routing']['domainStrategy'], 'IPIfNonMatch');
       final rules = (b.config['routing']['rules'] as List).cast<Map>();
-      expect(rules.last['ip'], ['0.0.0.0/0', '::/0'], reason: b.remark);
-      expect(rules.last['network'], isNull, reason: b.remark);
+      expect(rules.last['ip'], ['0.0.0.0/0', '::/0'], reason: 'routing rules');
+      expect(rules.last['network'], isNull, reason: 'routing rules');
       // Where UDP isn't carried, the block rule takes it before the catch-all.
       final udpBlock = rules.indexWhere(
         (r) => r['network'] == 'udp' && r['port'] == null && r['outboundTag'] == 'block',
       );
-      if (udpBlock >= 0) expect(rules.sublist(udpBlock + 1).any((r) => r['network'] == 'udp'), isFalse);
+      if (udpBlock >= 0) expect(rules.sublist(udpBlock + 1).any((r) => r['network'] == 'udp'), isFalse,
+        );
     }
   });
 
@@ -180,7 +187,8 @@ void main() {
       final c = (await builder({
         'vless': {'customCdn': customCdn},
       }).build(ConnectionMode.worker)).config;
-      return outboundsOf(c, 'proxy-').where((o) => o['settings']['address'] == 'cdn.example.net').toList();
+      return outboundsOf(c, 'proxy-',
+        ).where((o) => o['settings']['address'] == 'cdn.example.net').toList();
     }
 
     const cdn = {
@@ -190,18 +198,20 @@ void main() {
     };
     final on = await cdnProxies({...cdn, 'enabled': true});
     expect(on, isNotEmpty);
-    expect(on.first['streamSettings']['wsSettings']['host'], 'cdn-host.example.net');
-    expect(on.first['streamSettings']['tlsSettings']['serverName'], 'cdn-sni.example.net');
+    expect(on.first['streamSettings']['wsSettings']['host'], 'cdn-host.example.net',
+      );
+    expect(on.first['streamSettings']['tlsSettings']['serverName'], 'cdn-sni.example.net',
+      );
     expect(await cdnProxies({...cdn, 'enabled': false}), isEmpty);
     expect(await cdnProxies(cdn), isNotEmpty); // saved before the switch: on
     expect(const CustomCdnSettings().enabled, isFalse);
-  });
+  },
+  );
 
   test('unsafe TLS fingerprint sets the configured cipher suites', () async {
     final c = (await builder({
       'vless': {
-        'tlsFingerprint': 'unsafe',
-      },
+        'tlsFingerprint': 'unsafe'},
     }).build(ConnectionMode.worker)).config;
     final tls = outboundsOf(c, 'proxy-').first['streamSettings']['tlsSettings'] as Map;
     expect(tls['fingerprint'], 'unsafe');
@@ -211,7 +221,8 @@ void main() {
     );
 
     final defaultConfig = (await builder({}).build(ConnectionMode.worker)).config;
-    final defaultTls = outboundsOf(defaultConfig, 'proxy-').first['streamSettings']['tlsSettings'] as Map;
+    final defaultTls = outboundsOf(defaultConfig, 'proxy-',
+            ).first['streamSettings']['tlsSettings'] as Map;
     expect(defaultTls.containsKey('cipherSuites'), isFalse);
   });
 
@@ -221,7 +232,8 @@ void main() {
   });
 
   test('best ping uses balancer over all addresses', () async {
-    final c = (await builder(everything, everythingDevice).build(ConnectionMode.worker)).config;
+    final c = (await builder(everything, everythingDevice,
+    ).build(ConnectionMode.worker)).config;
     expect(outboundsOf(c, 'proxy-').length, greaterThan(10));
     expect(c['routing']['balancers'][0]['tag'], 'all-proxies');
     expect(c.containsKey('observatory'), isFalse);
@@ -242,8 +254,8 @@ void main() {
   test('fragment config carries finalmask and skips ECH', () async {
     final c = (await builder(
       everything,
-      everythingDevice,
-    ).build(ConnectionMode.worker, variant: ConnectionVariant.fastestObfuscated)).config;
+      everythingDevice).build(ConnectionMode.worker, variant: ConnectionVariant.fastestObfuscated,
+    )).config;
     final stream = (c['outbounds'] as List).first['streamSettings'] as Map;
     final masks = stream['finalmask']['tcp'] as List;
     expect(masks.length, 2);
@@ -259,7 +271,8 @@ void main() {
       'delays': ['0'],
     });
     expect((c['inbounds'] as List).first['settings']['MTU'], 1400);
-    expect((stream['tlsSettings'] as Map).containsKey('echConfigList'), isFalse);
+    expect((stream['tlsSettings'] as Map).containsKey('echConfigList'), isFalse,
+    );
     dump('fragment_best', c);
   });
 
@@ -290,11 +303,13 @@ void main() {
       'vmess_ws': 'vmess://$vmess',
     };
     for (final MapEntry(key: name, value: link) in links.entries) {
-      final c = (await builder(chains(link), chainExit).build(ConnectionMode.worker)).config;
+      final c = (await builder(chains(link), chainExit,
+      ).build(ConnectionMode.worker)).config;
       final outbounds = (c['outbounds'] as List).cast<Map>();
       // One exit, first (Xray's default), dialing the loopback back into routing as chain-in.
       expect(outbounds.first['tag'], 'exit', reason: name);
-      expect(outbounds.first['streamSettings']['sockopt']['dialerProxy'], 'exit-dialer', reason: name);
+      expect(outbounds.first['streamSettings']['sockopt']['dialerProxy'], 'exit-dialer', reason: name,
+      );
       expect(outbounds[1], {
         'protocol': 'loopback',
         'settings': {'inboundTag': 'chain-in'},
@@ -303,16 +318,21 @@ void main() {
       expect(outboundsOf(c, 'exit').length, 2, reason: name);
       final rules = (c['routing']['rules'] as List).cast<Map>();
       // chain-in goes through the connection with the remote DNS, before the bypass / block rules.
-      final chainIn = rules.indexWhere((r) => (r['inboundTag'] as List?)?.contains('chain-in') ?? false);
-      expect(rules[chainIn]['inboundTag'], ['chain-in', 'remote-dns'], reason: name);
+      final chainIn = rules.indexWhere((r) => (r['inboundTag'] as List?)?.contains('chain-in') ?? false,
+      );
+      expect(rules[chainIn]['inboundTag'], ['chain-in', 'remote-dns',
+      ], reason: name);
       expect(rules[chainIn]['balancerTag'], 'all-proxies', reason: name);
-      expect(rules.indexWhere((r) => r['domain'] != null || r['ip'] != null), greaterThan(chainIn), reason: name);
+      expect(rules.indexWhere((r) => r['domain'] != null || r['ip'] != null), greaterThan(chainIn), reason: name,
+      );
       expect(rules.last['outboundTag'], 'exit', reason: name);
       // Only the proxies are balanced and pinged.
-      expect((c['routing']['balancers'] as List).map((b) => b['tag']), ['all-proxies'], reason: name);
+      expect((c['routing']['balancers'] as List).map((b) => b['tag']), ['all-proxies',
+      ], reason: name);
       expect(c['burstObservatory']['subjectSelector'], ['proxy'], reason: name);
       // UDP goes to the chain proxy too: no UDP block.
-      final udpBlocked = rules.any((r) => r['network'] == 'udp' && r['port'] == null && r['outboundTag'] == 'block');
+      final udpBlocked = rules.any((r) => r['network'] == 'udp' && r['port'] == null && r['outboundTag'] == 'block',
+      );
       expect(udpBlocked, isFalse, reason: name);
       dump('chain_best_$name', c);
     }
@@ -321,7 +341,8 @@ void main() {
   test('a TLS chain proxy pins its certificate and verifies it by name (pcs / vcn)', () async {
     const fp = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
     final c = (await builder(
-      chains('trojan://pass@192.0.2.4:443?security=tls&sni=front.example.com&pcs=$fp&vcn=real.example.com#t'),
+      chains('trojan://pass@192.0.2.4:443?security=tls&sni=front.example.com&pcs=$fp&vcn=real.example.com#t',
+      ),
       chainExit,
     ).build(ConnectionMode.worker)).config;
     final tls = chainOf(c)!['streamSettings']['tlsSettings'] as Map;
@@ -346,7 +367,8 @@ void main() {
     final none = (await builder({}, chainExit).build(ConnectionMode.worker)).config;
     expect(outboundsOf(none, 'exit'), isEmpty);
     // Serverless has no chain: it connects directly.
-    final s = (await builder(profile, chainExit).build(ConnectionMode.serverless)).config;
+    final s = (await builder(profile, chainExit,
+    ).build(ConnectionMode.serverless)).config;
     expect(outboundsOf(s, 'exit'), isEmpty);
   });
 
@@ -354,42 +376,53 @@ void main() {
     const psiphonExit = {
       'exit': {'node': 'psiphon', 'region': 'DE'},
     };
-    Map socksOut(Map c) => (c['outbounds'] as List).cast<Map>().firstWhere((o) => o['tag'] == 'exit');
+    Map socksOut(Map c) => (c['outbounds'] as List).cast<Map>().firstWhere((o) => o['tag'] == 'exit',
+    );
     List<Map> rulesOf(Map c) => (c['routing']['rules'] as List).cast<Map>();
 
     test('traffic (TCP and UDP) exits through Psiphon; Psiphon dials through the worker', () async {
-      final b = await builder(everything, {...everythingDevice, ...psiphonExit}).build(ConnectionMode.worker);
+      final b = await builder(everything, {...everythingDevice, ...psiphonExit,
+      }).build(ConnectionMode.worker);
       final c = b.config;
-      expect(b.remark, endsWith('· Psiphon DE'));
-      expect(socksOut(c)['settings'], {'address': '127.0.0.1', 'port': XrayConfigBuilder.exitPort});
-      final up = (c['inbounds'] as List).cast<Map>().firstWhere((i) => i['tag'] == 'psiphon-in');
+      expect(socksOut(c)['settings'], {'address': '127.0.0.1', 'port': XrayConfigBuilder.exitPort,
+      });
+      final up = (c['inbounds'] as List).cast<Map>().firstWhere((i) => i['tag'] == 'psiphon-in',
+      );
       expect(up['port'], XrayConfigBuilder.exitUpstreamPort);
       expect(up['listen'], '127.0.0.1');
 
       final rules = rulesOf(c);
-      final upRule = rules.firstWhere((r) => (r['inboundTag'] as List?)?.contains('psiphon-in') ?? false);
+      final upRule = rules.firstWhere((r) => (r['inboundTag'] as List?)?.contains('psiphon-in') ?? false,
+      );
       expect(upRule['balancerTag'], 'all-proxies');
       // Remote DNS: the VLESS remote DNS through the balancer, as BPB does with a chain proxy.
-      final remote = (c['dns']['servers'] as List).whereType<Map>().firstWhere((d) => d['tag'] == 'remote-dns');
+      final remote = (c['dns']['servers'] as List).whereType<Map>().firstWhere((d) => d['tag'] == 'remote-dns',
+      );
       expect(remote['address'], 'https://dns.google/dns-query');
       expect(
-        rules.firstWhere((r) => (r['inboundTag'] as List?)?.contains('remote-dns') ?? false)['balancerTag'],
+        rules.firstWhere((r) => (r['inboundTag'] as List?)?.contains('remote-dns') ?? false,
+        )['balancerTag'],
         'all-proxies',
       );
       expect(rules.last, containsPair('outboundTag', 'exit'));
       expect(rules.last['network'], isNull);
       // UDP isn't blocked as it is through the worker alone, but bypass and block rules still apply first.
-      expect(rules.any((r) => r['network'] == 'udp' && r['port'] == null && r['outboundTag'] == 'block'), isFalse);
-      final bypass = rules.indexWhere((r) => (r['domain'] as List?)?.contains('geosite:ir') ?? false);
+      expect(rules.any((r) => r['network'] == 'udp' && r['port'] == null && r['outboundTag'] == 'block',
+        ), isFalse,
+      );
+      final bypass = rules.indexWhere((r) => (r['domain'] as List?)?.contains('geosite:ir') ?? false,
+      );
       expect(bypass, lessThan(rules.length - 1));
       expect(outboundsOf(c, 'exit-dialer'), isEmpty);
       dump('worker_psiphon', c);
     });
 
     test('Serverless: Psiphon dials through the fragment outbound', () async {
-      final c = (await builder(everything, psiphonExit).build(ConnectionMode.serverless)).config;
+      final c = (await builder(everything, psiphonExit,
+      ).build(ConnectionMode.serverless)).config;
       final rules = rulesOf(c);
-      final upRule = rules.firstWhere((r) => (r['inboundTag'] as List?)?.contains('psiphon-in') ?? false);
+      final upRule = rules.firstWhere((r) => (r['inboundTag'] as List?)?.contains('psiphon-in') ?? false,
+      );
       expect(upRule['outboundTag'], 'proxy');
       expect(rules.last['outboundTag'], 'exit');
       expect(rules.any((r) => r['outboundTag'] == 'udp-noise'), isFalse);
@@ -399,21 +432,27 @@ void main() {
     test('Psiphon type: no worker; the proxy is a socks outbound to Psiphon, which connects by itself', () async {
       final b = await builder(everything, {
         'connection': {'type': 'psiphon'},
-        'exit': {'node': 'worker', 'region': 'NL'}, // the type always exits through Psiphon
+        'exit': {'node': 'worker', 'region': 'NL',
+        }, // the type always exits through Psiphon
       }).build(ConnectionMode.psiphon);
       final c = b.config;
-      expect(b.remark, 'Psiphon NL');
       expect(outboundsOf(c, 'proxy').single, {
         'tag': 'proxy',
         'protocol': 'socks',
-        'settings': {'address': '127.0.0.1', 'port': XrayConfigBuilder.exitPort},
+        'settings': {'address': '127.0.0.1', 'port': XrayConfigBuilder.exitPort,
+        },
       });
       // No exit outbound or upstream inbound: Psiphon is outside the VPN like the rest of the app.
       expect(outboundsOf(c, 'exit'), isEmpty);
-      expect((c['inbounds'] as List).cast<Map>().map((i) => i['tag']), isNot(contains('psiphon-in')));
+      expect((c['inbounds'] as List).cast<Map>().map((i) => i['tag']), isNot(contains('psiphon-in')),
+      );
       final rules = rulesOf(c);
-      expect(rules.any((r) => (r['inboundTag'] as List?)?.contains('remote-dns') ?? false), isFalse);
-      expect(rules.any((r) => r['network'] == 'udp' && r['port'] == null && r['outboundTag'] == 'block'), isFalse);
+      expect(rules.any((r) => (r['inboundTag'] as List?)?.contains('remote-dns') ?? false,
+        ), isFalse,
+      );
+      expect(rules.any((r) => r['network'] == 'udp' && r['port'] == null && r['outboundTag'] == 'block',
+        ), isFalse,
+      );
       expect(rules.last, containsPair('outboundTag', 'proxy'));
       expect(rules.last['network'], isNull);
       expect(c.containsKey('burstObservatory'), isFalse);
@@ -425,21 +464,18 @@ void main() {
         'port': XrayConfigBuilder.exitDnsPort,
       });
       expect(servers.any((d) => d['tag'] == 'remote-dns'), isFalse);
-      expect(rules.any((r) => (r['inboundTag'] as List?)?.contains('remote-dns') ?? false), isFalse);
-      expect((c['dns']['hosts'] as Map? ?? const {}).containsKey('dns.google'), isFalse);
+      expect(rules.any((r) => (r['inboundTag'] as List?)?.contains('remote-dns') ?? false,
+        ), isFalse,
+      );
+      expect((c['dns']['hosts'] as Map? ?? const {}).containsKey('dns.google'), isFalse,
+      );
       dump('psiphon_type', c);
-    });
-
-    test('any region', () async {
-      final b = await builder({}, {
-        'exit': {'node': 'psiphon', 'region': 'XX'}, // unknown → any
-      }).build(ConnectionMode.worker);
-      expect(b.remark, endsWith('· Psiphon'));
     });
   });
 
   group('Tor exit', () {
-    Map socksOut(Map c) => (c['outbounds'] as List).cast<Map>().firstWhere((o) => o['tag'] == 'exit');
+    Map socksOut(Map c) => (c['outbounds'] as List).cast<Map>().firstWhere((o) => o['tag'] == 'exit',
+    );
     List<Map> rulesOf(Map c) => (c['routing']['rules'] as List).cast<Map>();
     Map inboundRule(Map c, String tag) =>
         rulesOf(c).firstWhere((r) => (r['inboundTag'] as List?)?.contains(tag) ?? false);
@@ -450,21 +486,28 @@ void main() {
         'exit': {'node': 'tor', 'region': 'NL'},
       }).build(ConnectionMode.worker);
       final c = b.config;
-      expect(b.remark, endsWith('· Tor NL'));
-      expect(socksOut(c)['settings'], {'address': '127.0.0.1', 'port': XrayConfigBuilder.exitPort});
-      final up = (c['inbounds'] as List).cast<Map>().firstWhere((i) => i['tag'] == 'tor-in');
+      expect(socksOut(c)['settings'], {'address': '127.0.0.1', 'port': XrayConfigBuilder.exitPort,
+      });
+      final up = (c['inbounds'] as List).cast<Map>().firstWhere((i) => i['tag'] == 'tor-in',
+      );
       expect(up['port'], XrayConfigBuilder.exitUpstreamPort);
-      expect((c['inbounds'] as List).cast<Map>().any((i) => i['tag'] == 'psiphon-in'), isFalse);
+      expect((c['inbounds'] as List).cast<Map>().any((i) => i['tag'] == 'psiphon-in',
+        ), isFalse,
+      );
       expect(inboundRule(c, 'tor-in')['balancerTag'], 'all-proxies');
-      expect(inboundRule(c, 'tor-in')['inboundTag'], ['tor-in', 'remote-dns']); // one rule for both
+      expect(inboundRule(c, 'tor-in')['inboundTag'], ['tor-in', 'remote-dns',
+      ]); // one rule for both
       // Remote DNS: the VLESS remote DNS through the balancer, not Tor's DNSPort (that's for the
       // Tor type, which has no VLESS / WARP to go through).
       final servers = (c['dns']['servers'] as List).whereType<Map>();
-      expect(servers.firstWhere((d) => d['tag'] == 'remote-dns')['address'], 'https://dns.google/dns-query');
+      expect(servers.firstWhere((d) => d['tag'] == 'remote-dns')['address'], 'https://dns.google/dns-query',
+      );
       expect(servers.any((d) => d['address'] == '127.0.0.1'), isFalse);
       expect(inboundRule(c, 'remote-dns')['balancerTag'], 'all-proxies');
       final rules = rulesOf(c);
-      expect(rules.any((r) => r['network'] == 'udp' && r['port'] == null && r['outboundTag'] == 'block'), isTrue);
+      expect(rules.any((r) => r['network'] == 'udp' && r['port'] == null && r['outboundTag'] == 'block',
+        ), isTrue,
+      );
       expect(rules.last, containsPair('outboundTag', 'exit'));
       expect(rules.last['network'], isNull);
       dump('worker_tor', c);
@@ -488,21 +531,24 @@ void main() {
           'exit': {'node': 'tor'},
         },
       ).build(ConnectionMode.warp)).config;
-      expect(rulesOf(c).any((r) => r['network'] == 'udp' && r['outboundTag'] == 'block'), isTrue);
+      expect(rulesOf(c).any((r) => r['network'] == 'udp' && r['outboundTag'] == 'block'), isTrue,
+      );
       expect(rulesOf(c).last['network'], isNull);
     });
 
     test('Tor type: no worker; the proxy is a socks outbound to Tor; UDP is blocked', () async {
       final b = await builder(everything, {
         'connection': {'type': 'tor', 'torBridge': 'obfs4'},
-        'exit': {'node': 'psiphon', 'region': 'DE'}, // the type always exits through Tor
+        'exit': {'node': 'psiphon', 'region': 'DE',
+        }, // the type always exits through Tor
       }).build(ConnectionMode.tor);
       final c = b.config;
-      expect(b.remark, 'Tor DE');
       expect(outboundsOf(c, 'proxy').single['protocol'], 'socks');
       expect(outboundsOf(c, 'exit'), isEmpty);
-      expect((c['inbounds'] as List).cast<Map>().map((i) => i['tag']), isNot(contains('tor-in')));
-      expect(rulesOf(c).any((r) => r['network'] == 'udp' && r['outboundTag'] == 'block'), isTrue);
+      expect((c['inbounds'] as List).cast<Map>().map((i) => i['tag']), isNot(contains('tor-in')),
+      );
+      expect(rulesOf(c).any((r) => r['network'] == 'udp' && r['outboundTag'] == 'block'), isTrue,
+      );
       expect(rulesOf(c).last, containsPair('outboundTag', 'proxy'));
       expect(rulesOf(c).last['network'], isNull);
       expect(c.containsKey('burstObservatory'), isFalse);
@@ -513,13 +559,13 @@ void main() {
       const device = {
         'connection': {'type': 'tor', 'torBridge': 'custom'},
       };
-      expect(() => builder({}, device).build(ConnectionMode.tor), throwsStateError);
+      expect(() => builder({}, device).build(ConnectionMode.tor), throwsStateError,
+      );
       final c = await builder({
         'tor': {
           'bridges': ['obfs4 192.0.2.1:443 FP cert=abc iat-mode=0'],
         },
       }, device).build(ConnectionMode.tor);
-      expect(c.remark, 'Tor');
     });
 
     test('unknown bridge falls back to Snowflake', () {
@@ -533,24 +579,29 @@ void main() {
   });
 
   test('serverless config routes tls/http/quic to fragment and noise', () async {
-    final c = (await builder(everything, everythingDevice).build(ConnectionMode.serverless)).config;
+    final c = (await builder(everything, everythingDevice,
+      ).build(ConnectionMode.serverless)).config;
     final tags = (c['outbounds'] as List).map((o) => o['tag']).toList();
     expect(tags, containsAll(['proxy', 'http-fragment', 'udp-noise']));
     expect((c['routing']['rules'] as List).last['outboundTag'], 'direct');
     dump('serverless_fragment', c);
-  });
+  },
+  );
 
   test('serverless races Google and Cloudflare DoH as its remote DNS', () async {
     final dns = (await builder({}).build(ConnectionMode.serverless)).config['dns'] as Map;
     expect(dns['enableParallelQuery'], isTrue);
-    final remote = (dns['servers'] as List).whereType<Map>().where((s) => s['tag'] == 'remote-dns');
-    expect(remote.map((s) => s['address']), ['https://dns.google/dns-query', 'https://cloudflare-dns.com/dns-query']);
+    final remote = (dns['servers'] as List).whereType<Map>().where((s) => s['tag'] == 'remote-dns',
+      );
+    expect(remote.map((s) => s['address']), ['https://dns.google/dns-query', 'https://cloudflare-dns.com/dns-query',
+      ]);
     expect(dns['hosts']['dns.google'], ['8.8.8.8', '8.8.4.4']);
     expect(dns['hosts']['cloudflare-dns.com'], ['cloudflare.com']);
     // Other types keep serial queries.
     final worker = (await builder({}).build(ConnectionMode.worker)).config['dns'] as Map;
     expect(worker['enableParallelQuery'], isNull);
-  });
+  },
+  );
 
   group('Domain Fronting', () {
     const fronting = {
@@ -558,31 +609,37 @@ void main() {
     };
 
     test("is patterniha's v23 config with the app's inbounds, log and stats", () async {
-      final b = await builder(everything, fronting).build(ConnectionMode.serverless);
+      final b = await builder(everything, fronting,
+        ).build(ConnectionMode.serverless);
       final c = b.config;
       final original = jsonDecode(domainFrontingV23) as Map<String, dynamic>;
-      expect(b.remark, contains('Domain Fronting'));
       expect(c['routing'], original['routing']);
       expect(c['dns'], original['dns']);
       expect(c['outbounds'], original['outbounds']);
       expect(c.containsKey('__Credits__'), isFalse);
 
       final inbounds = (c['inbounds'] as List).cast<Map>();
-      expect(inbounds.map((i) => i['tag']), ['tun', 'mixed-in', 'tls-decrypt-h11', 'tls-decrypt-h211']);
-      final mixed = (original['inbounds'] as List).cast<Map>().firstWhere((i) => i['tag'] == 'mixed-in');
-      expect(inbounds[0]['sniffing'], mixed['sniffing']); // fakedns + tls, routeOnly false
+      expect(inbounds.map((i) => i['tag']), ['tun', 'mixed-in', 'tls-decrypt-h11', 'tls-decrypt-h211',
+        ]);
+      final mixed = (original['inbounds'] as List).cast<Map>().firstWhere((i) => i['tag'] == 'mixed-in',
+        );
+      expect(inbounds[0]['sniffing'], mixed['sniffing'],
+        ); // fakedns + tls, routeOnly false
       expect(inbounds[1]['sniffing'], mixed['sniffing']);
       expect(inbounds[1]['streamSettings'], mixed['streamSettings']);
       expect(inbounds[1]['port'], XrayConfigBuilder.localProxyPort);
       for (final decrypt in inbounds.skip(2)) {
         final cert = decrypt['streamSettings']['tlsSettings']['certificates'].single as Map;
-        expect(cert, {'usage': 'issue', 'certificateFile': MitmCa.certFile, 'keyFile': MitmCa.keyFile});
+        expect(cert, {'usage': 'issue', 'certificateFile': MitmCa.certFile, 'keyFile': MitmCa.keyFile,
+          });
       }
       expect(c['policy']['levels'], original['policy']['levels']);
-      expect(c['policy']['system'], {'statsOutboundUplink': true, 'statsOutboundDownlink': true});
+      expect(c['policy']['system'], {'statsOutboundUplink': true, 'statsOutboundDownlink': true,
+        });
       expect(c['stats'], isEmpty);
       dump('serverless_domain_fronting', c);
-    });
+    },
+    );
 
     test("Psiphon / Tor exit: the regular config, only the exit's own connections fronted", () async {
       final original = jsonDecode(domainFrontingV23) as Map<String, dynamic>;
@@ -593,10 +650,10 @@ void main() {
           'exit': {'node': exit},
         }).build(ConnectionMode.serverless);
         final c = b.config;
-        expect(b.remark, contains(exit == 'tor' ? 'Tor' : 'Psiphon'));
 
         final inbounds = (c['inbounds'] as List).cast<Map>();
-        expect(inbounds.map((i) => i['tag']), ['tun', 'mixed-in', '$exit-in', 'tls-decrypt-h11', 'tls-decrypt-h211']);
+        expect(inbounds.map((i) => i['tag']), ['tun', 'mixed-in', '$exit-in', 'tls-decrypt-h11', 'tls-decrypt-h211',
+        ]);
         // Your traffic: the regular sniffing, with FakeDNS (always on in Serverless).
         expect(inbounds[0]['sniffing'], {
           'enabled': true,
@@ -624,15 +681,21 @@ void main() {
           'direct',
           'block',
         ]);
-        for (final o in outbounds.where((o) => (o['tag'] as String).startsWith('tls-repack-'))) {
-          expect(o, (original['outbounds'] as List).firstWhere((v) => v['tag'] == o['tag']));
+        for (final o in outbounds.where((o) => (o['tag'] as String).startsWith('tls-repack-'),
+        )) {
+          expect(o, (original['outbounds'] as List).firstWhere((v) => v['tag'] == o['tag'],
+            ),
+          );
         }
 
         final rules = (c['routing']['rules'] as List).cast<Map>().map((r) => {...r}..remove('type')).toList();
         expect(c['routing']['domainStrategy'], 'IPIfNonMatch');
-        final redirects = v23Rules.where((r) => (r['outboundTag'] as String).startsWith('redirect-out-')).toList();
+        final redirects = v23Rules.where((r) => (r['outboundTag'] as String).startsWith('redirect-out-'),
+            ).toList();
         final decrypted = v23Rules
-            .where((r) => (r['inboundTag'] as List?)?.any((t) => (t as String).startsWith('tls-decrypt-')) ?? false)
+            .where((r) => (r['inboundTag'] as List?)?.any((t) => (t as String).startsWith('tls-decrypt-'),
+                  ) ?? false,
+            )
             .toList();
         expect(redirects, hasLength(3));
         expect(decrypted, hasLength(7));
@@ -686,7 +749,8 @@ void main() {
           },
         ).build(ConnectionMode.serverless)).config;
         final iran = (withSettings['routing']['rules'] as List).cast<Map>().where(
-          (r) => ((r['domain'] ?? r['ip']) as List?)?.any((v) => '$v'.endsWith(':ir')) ?? false,
+          (r) => ((r['domain'] ?? r['ip']) as List?)?.any((v) => '$v'.endsWith(':ir'),
+                  ) ?? false,
         );
         expect(iran, hasLength(2));
         expect(iran.every((r) => '${r['inboundTag']}' == '$yours'), isTrue);
@@ -701,15 +765,18 @@ void main() {
           {'action': 'direct'},
         ]);
         final withSettingsServers = (withSettings['dns']['servers'] as List).cast<Map>();
-        final local = withSettingsServers.where((s) => s['address'] == 'localhost');
+        final local = withSettingsServers.where((s) => s['address'] == 'localhost',
+        );
         // FakeDNS, always on as in v23, for the domains dns-out hands to the DNS module.
         expect(withSettingsServers.first, {
           'address': 'fakedns',
           'domains': ['geosite:ir', 'full:github.githubassets.com'],
           'skipFallback': false,
         });
-        expect((withSettings['inbounds'] as List).first['sniffing']['destOverride'], contains('fakedns'));
-        expect(local.expand((s) => s['domains'] as List), ['geosite:ir', 'full:github.githubassets.com']);
+        expect((withSettings['inbounds'] as List).first['sniffing']['destOverride'], contains('fakedns'),
+        );
+        expect(local.expand((s) => s['domains'] as List), ['geosite:ir', 'full:github.githubassets.com',
+        ]);
 
         final dns = c['dns'] as Map;
         final servers = (dns['servers'] as List).cast<Map>();
@@ -724,7 +791,8 @@ void main() {
           everyElement(isIn(['localhost', 'fakedns'])),
         );
         // remote-dns: your apps' queries go straight to the exit's DNS.
-        final appDns = (c['outbounds'] as List).cast<Map>().firstWhere((o) => o['tag'] == 'dns-out');
+        final appDns = (c['outbounds'] as List).cast<Map>().firstWhere((o) => o['tag'] == 'dns-out',
+        );
         expect(appDns['settings'], {
           'network': 'udp',
           'address': '127.0.0.1',
@@ -733,14 +801,19 @@ void main() {
             {'action': 'direct'},
           ],
         });
-        expect(dns['hosts']['dns.redirect'], original['dns']['hosts']['dns.redirect']);
+        expect(dns['hosts']['dns.redirect'], original['dns']['hosts']['dns.redirect'],
+        );
         expect(dns['hosts']['fastly.redirect'], 'github.githubassets.com');
-        expect(servers.any((s) => (s['domains'] as List?)?.contains('full:github.githubassets.com') ?? false), isTrue);
+        expect(servers.any((s) => (s['domains'] as List?)?.contains('full:github.githubassets.com',
+                ) ?? false,
+          ), isTrue,
+        );
         dump('serverless_domain_fronting_$exit', c);
       }
 
       // Direct: the original as is.
-      final direct = (await builder({}, fronting).build(ConnectionMode.serverless)).config;
+      final direct = (await builder({}, fronting,
+      ).build(ConnectionMode.serverless)).config;
       expect(direct['routing'], original['routing']);
     });
 
@@ -749,18 +822,28 @@ void main() {
         'connection': {'serverlessMode': mode},
         'exit': {'node': exit},
       });
-      expect(XrayConfigBuilder.psiphonConfigFor(ConnectionMode.serverless, device('domainFronting', 'psiphon')), {
+      expect(XrayConfigBuilder.psiphonConfigFor(ConnectionMode.serverless, device('domainFronting', 'psiphon'),
+        ), {
         'LimitTunnelProtocols': ['FRONTED-MEEK-OSSH'],
-      });
-      expect(XrayConfigBuilder.psiphonConfigFor(ConnectionMode.serverless, device('fragment', 'psiphon')), isNull);
-      expect(XrayConfigBuilder.psiphonConfigFor(ConnectionMode.worker, device('domainFronting', 'psiphon')), isNull);
+      },
+      );
+      expect(XrayConfigBuilder.psiphonConfigFor(ConnectionMode.serverless, device('fragment', 'psiphon'),
+        ), isNull,
+      );
+      expect(XrayConfigBuilder.psiphonConfigFor(ConnectionMode.worker, device('domainFronting', 'psiphon'),
+        ), isNull,
+      );
       // The Psiphon type: no limit, Psiphon picks (Conduit too, where its tactics enable it).
-      expect(XrayConfigBuilder.psiphonConfigFor(ConnectionMode.psiphon, device('domainFronting', 'psiphon')), isNull);
+      expect(XrayConfigBuilder.psiphonConfigFor(ConnectionMode.psiphon, device('domainFronting', 'psiphon'),
+        ), isNull,
+      );
     });
 
     test('proxy mode drops the TUN inbound', () async {
-      final c = (await builder({}, {...fronting, 'appMode': 'proxy'}).build(ConnectionMode.serverless)).config;
-      expect((c['inbounds'] as List).map((i) => i['tag']), ['mixed-in', 'tls-decrypt-h11', 'tls-decrypt-h211']);
+      final c = (await builder({}, {...fronting, 'appMode': 'proxy',
+      }).build(ConnectionMode.serverless)).config;
+      expect((c['inbounds'] as List).map((i) => i['tag']), ['mixed-in', 'tls-decrypt-h11', 'tls-decrypt-h211',
+      ]);
     });
   });
 
@@ -770,7 +853,9 @@ void main() {
       'connection': {'type': 'tor'},
     };
     final off = (await builder({}, tor).build(ConnectionMode.tor)).config;
-    expect(rulesOf(off).any((r) => (r['protocol'] as List?)?.contains('bittorrent') ?? false), isFalse);
+    expect(rulesOf(off,
+        ).any((r) => (r['protocol'] as List?)?.contains('bittorrent') ?? false), isFalse,
+      );
 
     final c = (await builder({
       'routing': {
@@ -780,31 +865,45 @@ void main() {
       },
     }, tor).build(ConnectionMode.tor)).config;
     final rules = rulesOf(c);
-    final bt = rules.indexWhere((r) => (r['protocol'] as List?)?.contains('bittorrent') ?? false);
+    final bt = rules.indexWhere((r) => (r['protocol'] as List?)?.contains('bittorrent') ?? false,
+      );
     expect(rules[bt], containsPair('outboundTag', 'direct'));
     expect(rules[bt]['network'], isNull);
-    expect(bt, lessThan(rules.indexWhere((r) => r['network'] == 'udp' && r['outboundTag'] == 'block')));
-  });
+    expect(bt, lessThan(rules.indexWhere((r) => r['network'] == 'udp' && r['outboundTag'] == 'block',
+          ),
+        ),
+      );
+  },
+  );
 
   test('sanction rules get their own direct rule, apart from bypass rules', () async {
     // Anti-sanction applies with WARP / Serverless (not VLESS, see below).
     final c = (await builder(everything).build(ConnectionMode.serverless)).config;
     final rules = (c['routing']['rules'] as List).cast<Map>();
-    final bypass = rules.firstWhere((r) => (r['domain'] as List?)?.contains('geosite:ir') ?? false);
-    final sanction = rules.firstWhere((r) => (r['domain'] as List?)?.contains('geosite:openai') ?? false);
+    final bypass = rules.firstWhere((r) => (r['domain'] as List?)?.contains('geosite:ir') ?? false,
+      );
+    final sanction = rules.firstWhere((r) => (r['domain'] as List?)?.contains('geosite:openai') ?? false,
+      );
     expect(identical(bypass, sanction), isFalse);
-    expect(bypass['domain'], containsAll(['geosite:cn', 'domain:example.ir']));
+    expect(bypass['domain'], containsAll(['geosite:cn', 'domain:example.ir']),
+      );
     expect(bypass['domain'], isNot(contains('geosite:microsoft')));
-    expect(bypass['domain'], isNot(contains('domain:sanctioned.example.com')));
-    expect(sanction['domain'], containsAll(['geosite:microsoft', 'domain:sanctioned.example.com']));
+    expect(bypass['domain'], isNot(contains('domain:sanctioned.example.com')),
+      );
+    expect(sanction['domain'], containsAll(['geosite:microsoft', 'domain:sanctioned.example.com']),
+      );
     expect(sanction['outboundTag'], 'direct');
-    final block = rules.firstWhere((r) => (r['domain'] as List?)?.contains('geosite:category-ads-all') ?? false);
-    expect(block['domain'], containsAll(['geosite:malware', 'domain:ads.example.com']));
+    final block = rules.firstWhere((r) => (r['domain'] as List?)?.contains('geosite:category-ads-all') ?? false,
+      );
+    expect(block['domain'], containsAll(['geosite:malware', 'domain:ads.example.com']),
+      );
     expect(block['outboundTag'], 'block');
-  });
+  },
+  );
 
   test('remote DNS host: a public one\'s built-in IPs, any other looked up with the local DNS', () async {
-    Future<Map<String, dynamic>> dns(Map<String, dynamic> remoteDns, {bool ipv6 = false}) async {
+    Future<Map<String, dynamic>> dns(Map<String, dynamic> remoteDns, {bool ipv6 = false,
+    }) async {
       final c = (await builder({
         'general': {'enableIpv6': ipv6},
         'vless': {'remoteDns': remoteDns},
@@ -812,23 +911,28 @@ void main() {
       return c['dns'] as Map<String, dynamic>;
     }
 
-    Future<Map> hosts(Map<String, dynamic> remoteDns, {bool ipv6 = false}) async =>
+    Future<Map> hosts(Map<String, dynamic> remoteDns, {bool ipv6 = false,
+    }) async =>
         (await dns(remoteDns, ipv6: ipv6))['hosts'] as Map? ?? const {};
 
     // Public: its own IPs (IPv6 ones with IPv6 on).
-    expect((await hosts({'server': 'https://dns.google/dns-query'}))['dns.google'], ['8.8.8.8', '8.8.4.4']);
+    expect((await hosts({'server': 'https://dns.google/dns-query'}))['dns.google'], ['8.8.8.8', '8.8.4.4'],
+    );
     expect(
-      (await hosts({'server': 'https://dns.google/dns-query'}, ipv6: true))['dns.google'],
+      (await hosts({'server': 'https://dns.google/dns-query',
+      }, ipv6: true))['dns.google'],
       publicDnsIps['dns.google'],
     );
     // Any other domain: resolved by Xray with the local DNS server, not pinned in hosts.
     final other = await dns({'server': 'https://dns.example.com/dns-query'});
-    expect((other['hosts'] as Map? ?? const {}).containsKey('dns.example.com'), isFalse);
+    expect((other['hosts'] as Map? ?? const {}).containsKey('dns.example.com'), isFalse,
+    );
     final local = (other['servers'] as List).whereType<Map>().firstWhere(
       (s) => s['address'] == '8.8.8.8' && ((s['domains'] as List?)?.contains('full:dns.example.com') ?? false),
     );
     expect(local['skipFallback'], isTrue);
-    expect(await hosts({'server': 'https://8.8.8.8/dns-query'}), isNot(contains('8.8.8.8'))); // IP: nothing to map
+    expect(await hosts({'server': 'https://8.8.8.8/dns-query'}), isNot(contains('8.8.8.8')),
+    ); // IP: nothing to map
   });
 
   test('anti-sanction DoH with a domain: resolved with the local DNS', () async {
@@ -841,15 +945,21 @@ void main() {
       },
     }).build(ConnectionMode.serverless)).config;
     final servers = (c['dns']['servers'] as List).whereType<Map>();
-    final sanction = servers.firstWhere((s) => (s['domains'] as List?)?.contains('geosite:openai') ?? false);
+    final sanction = servers.firstWhere((s) => (s['domains'] as List?)?.contains('geosite:openai') ?? false,
+      );
     expect(sanction['address'], 'https://dns.test/dns-query');
-    expect((c['dns']['hosts'] as Map? ?? const {}).containsKey('dns.test'), isFalse);
+    expect((c['dns']['hosts'] as Map? ?? const {}).containsKey('dns.test'), isFalse,
+      );
     // The local DNS entry lists it (Serverless's FakeDNS entry does too, as in BPB). Serverless's
     // local DNS is always the system's resolver.
-    final local = servers.where((s) => s['address'] == 'localhost' && s['expectIPs'] == null);
-    expect(local.any((s) => (s['domains'] as List?)?.contains('full:dns.test') ?? false), isTrue);
+    final local = servers.where((s) => s['address'] == 'localhost' && s['expectIPs'] == null,
+      );
+    expect(local.any((s) => (s['domains'] as List?)?.contains('full:dns.test') ?? false,
+        ), isTrue,
+      );
     dump('anti_sanction_doh', c);
-  });
+  },
+  );
 
   test('anti-sanction only with WARP / Serverless, and not with a Psiphon / Tor exit', () async {
     const profile = {
@@ -859,12 +969,15 @@ void main() {
         },
       },
     };
-    Future<bool> hasSanction(ConnectionMode mode, [Map<String, dynamic> device = const {}]) async {
+    Future<bool> hasSanction(ConnectionMode mode, [Map<String, dynamic> device = const {},
+    ]) async {
       final c = (await builder(profile, device).build(mode)).config;
       final dns = (c['dns']['servers'] as List).whereType<Map>();
       final rules = (c['routing']['rules'] as List).cast<Map>();
-      final inDns = dns.any((s) => (s['domains'] as List?)?.contains('geosite:openai') ?? false);
-      final inRules = rules.any((r) => (r['domain'] as List?)?.contains('geosite:openai') ?? false);
+      final inDns = dns.any((s) => (s['domains'] as List?)?.contains('geosite:openai') ?? false,
+      );
+      final inRules = rules.any((r) => (r['domain'] as List?)?.contains('geosite:openai') ?? false,
+      );
       expect(inDns, inRules);
       return inDns;
     }
@@ -888,13 +1001,15 @@ void main() {
           'cleanIps': ['104.16.1.1', '2606:4700::1', '[2606:4700::2]'],
         },
       }).build(ConnectionMode.worker)).config;
-      return outboundsOf(c, 'proxy-').map((o) => '${o['settings']['address']}').toSet();
+      return outboundsOf(c, 'proxy-',
+      ).map((o) => '${o['settings']['address']}').toSet();
     }
 
     final off = await addresses(false);
     expect(off, contains('104.16.1.1'));
     expect(off.where((a) => a.contains(':')), isEmpty);
-    expect(await addresses(true), containsAll(['2606:4700::1', '[2606:4700::2]']));
+    expect(await addresses(true), containsAll(['2606:4700::1', '[2606:4700::2]']),
+    );
   });
 
   group('WARP', () {
@@ -912,7 +1027,8 @@ void main() {
       ...everything,
       'warp': {
         'account': account(),
-        'endpoints': ['engage.cloudflareclient.com:2408', '162.159.192.10:878', '[2606:4700:d0::a29f:c001]:2408'],
+        'endpoints': ['engage.cloudflareclient.com:2408', '162.159.192.10:878', '[2606:4700:d0::a29f:c001]:2408',
+        ],
       },
     };
     const chainLink =
@@ -927,18 +1043,33 @@ void main() {
     test('every balancer falls back to a proxy until the first pings are in', () async {
       Map balancerOf(Map<String, dynamic> c) => (c['routing']['balancers'] as List).single as Map;
       // Without it, a chain's first dial would take the default route: the chain (exit) itself.
-      for (final variant in [ConnectionVariant.fastest, ConnectionVariant.fastestObfuscated, ConnectionVariant.smart]) {
-        final warp = (await builder({...warpSettings, ...chains(chainLink)}, chainExit).build(
+      for (final variant in [ConnectionVariant.fastest, ConnectionVariant.fastestObfuscated]) {
+        final warp = (await builder({...warpSettings, ...chains(chainLink),
+          }, chainExit).build(
           ConnectionMode.warp,
-          variant: variant,
-        )).config;
-        expect(balancerOf(warp)['fallbackTag'], 'proxy-1', reason: '$variant');
+          variant: variant)).config;
+        expect(balancerOf(warp)['fallbackTag'], 'proxy-1', reason: '$variant',
+          );
       }
-      final smartFragment = (await builder({}).build(ConnectionMode.worker, variant: ConnectionVariant.smart)).config;
-      expect(balancerOf(smartFragment)['fallbackTag'], 'proxy-1');
+        expect(ConnectionVariant.of(ConnectionMode.worker), [
+          ConnectionVariant.fastest,
+          ConnectionVariant.fastestObfuscated,
+          ConnectionVariant.browserDialer,
+        ]);
+      expect(
+          ConnectionVariant.of(ConnectionMode.worker)
+              .map((v) => v.label(ConnectionMode.worker)),
+          ['Normal', 'Fragment', 'Browser Dialer'],
+        );
+      expect(
+        ConnectionVariant.of(ConnectionMode.warp)
+            .map((v) => v.label(ConnectionMode.warp)),
+        ['Normal', 'Obfuscation'],
+      );
       final bestPing = (await builder({}).build(ConnectionMode.worker)).config;
       expect(balancerOf(bestPing)['fallbackTag'], 'proxy-2'); // BPB's
-    });
+    },
+    );
 
     test('best ping balances wireguard outbounds and allows UDP', () async {
       final c = (await builder(warpSettings).build(ConnectionMode.warp)).config;
@@ -946,22 +1077,29 @@ void main() {
       expect(proxies.length, 3);
       expect(proxies.every((o) => o['protocol'] == 'wireguard'), isTrue);
       expect(proxies.first['settings']['reserved'], [1, 2, 3]);
-      expect(proxies.first['settings']['address'], ['172.16.0.2/32', '2606:4700:110:8a36:df92:102a:9602:fa18/128']);
+      expect(proxies.first['settings']['address'], ['172.16.0.2/32', '2606:4700:110:8a36:df92:102a:9602:fa18/128',
+      ]);
       expect(outboundsOf(c, 'exit'), isEmpty);
       final rules = (c['routing']['rules'] as List).cast<Map>();
-      expect(rules.any((r) => r['network'] == 'udp' && r['port'] == null && r['outboundTag'] == 'block'), isFalse);
+      expect(rules.any((r) => r['network'] == 'udp' && r['port'] == null && r['outboundTag'] == 'block',
+        ), isFalse,
+      );
       expect(rules.last['network'], isNull);
-      expect(c['dns']['servers'].firstWhere((d) => d is Map && d['tag'] == 'remote-dns')['address'], '1.1.1.1');
+      expect(c['dns']['servers'].firstWhere((d) => d is Map && d['tag'] == 'remote-dns',
+        )['address'], '1.1.1.1',
+      );
       expect(c['dns']['queryStrategy'], 'UseIP'); // IPv6 is on in `everything`
       dump('warp_best', c);
     });
 
     test('IPv6 off: no IPv6 endpoints; an error if none are left', () async {
-      final c = (await builder({'warp': warpSettings['warp']}).build(ConnectionMode.warp)).config;
-      expect(outboundsOf(c, 'proxy-').map((o) => o['settings']['peers'][0]['endpoint']), [
+      final c = (await builder({'warp': warpSettings['warp'],
+      }).build(ConnectionMode.warp)).config;
+      expect(outboundsOf(c, 'proxy-',
+        ).map((o) => o['settings']['peers'][0]['endpoint']), [
         'engage.cloudflareclient.com:2408',
-        '162.159.192.10:878',
-      ]);
+        '162.159.192.10:878'],
+      );
       expect(
         () => builder({
           'warp': {
@@ -982,11 +1120,16 @@ void main() {
 
     test('sanction rules only with the Default exit node', () async {
       bool hasSanction(Map<String, dynamic> c) => (c['routing']['rules'] as List).cast<Map>().any(
-        (r) => (r['domain'] as List?)?.contains('domain:sanctioned.example.com') ?? false,
+        (r) => (r['domain'] as List?)?.contains('domain:sanctioned.example.com',
+                ) ?? false,
       );
-      final profile = {...warpSettings, ...chains(chainLink), 'routing': everything['routing']};
-      expect(hasSanction((await builder(profile).build(ConnectionMode.warp)).config), isTrue);
-      expect(hasSanction((await builder(profile, chainExit).build(ConnectionMode.warp)).config), isFalse);
+      final profile = {...warpSettings, ...chains(chainLink), 'routing': everything['routing'],
+      };
+      expect(hasSanction((await builder(profile).build(ConnectionMode.warp)).config), isTrue,
+      );
+      expect(hasSanction((await builder(profile, chainExit).build(ConnectionMode.warp)).config,
+        ), isFalse,
+      );
     });
 
     test('chain proxy is dialed through WARP', () async {
@@ -997,16 +1140,19 @@ void main() {
       }, chainExit).build(ConnectionMode.warp)).config;
       expect(chainOf(c)!['protocol'], 'vless');
       expect(outboundsOf(c, 'proxy-').length, 3);
-      expect((c['routing']['balancers'] as List).map((x) => x['tag']), ['all-proxies']);
+      expect((c['routing']['balancers'] as List).map((x) => x['tag']), ['all-proxies',
+      ]);
       final rules = (c['routing']['rules'] as List).cast<Map>();
-      expect(rules.firstWhere((r) => r['balancerTag'] != null)['inboundTag'], ['chain-in', 'remote-dns']);
+      expect(rules.firstWhere((r) => r['balancerTag'] != null)['inboundTag'], ['chain-in', 'remote-dns',
+      ]);
       expect(rules.last['outboundTag'], 'exit');
       dump('warp_chain_best', c);
     });
 
     test('a WireGuard chain proxy is dialed through WARP, not through the worker', () async {
       final link = wireGuardConfToChain(wgConf).link;
-      final c = (await builder({...warpSettings, ...chains(link)}, chainExit).build(ConnectionMode.warp)).config;
+      final c = (await builder({...warpSettings, ...chains(link),
+        }, chainExit).build(ConnectionMode.warp)).config;
       final chain = chainOf(c)!;
       expect(chain['protocol'], 'wireguard');
       expect(chain['settings'], {
@@ -1026,13 +1172,17 @@ void main() {
       });
       dump('warp_chain_wireguard', c);
       // A config without MTU leaves it to Xray's default.
-      final noMtu = wireGuardConfToChain(wgConf.replaceFirst('MTU = 1380\n', '')).link;
-      final d = (await builder({...warpSettings, ...chains(noMtu)}, chainExit).build(ConnectionMode.warp)).config;
+      final noMtu = wireGuardConfToChain(wgConf.replaceFirst('MTU = 1380\n', ''),
+        ).link;
+      final d = (await builder({...warpSettings, ...chains(noMtu),
+        }, chainExit).build(ConnectionMode.warp)).config;
       expect((chainOf(d)!['settings'] as Map).containsKey('mtu'), isFalse);
       // The worker relays TCP only.
-      final w = (await builder(chains(link), chainExit).build(ConnectionMode.worker)).config;
+      final w = (await builder(chains(link), chainExit,
+        ).build(ConnectionMode.worker)).config;
       expect(chainOf(w), isNull);
-    });
+    },
+    );
 
     test('a Hysteria2 chain proxy is dialed through WARP, not through the worker', () async {
       // OpenSSL's format: colons between the bytes.
@@ -1040,15 +1190,18 @@ void main() {
       const link =
           'hysteria2://secret@hy.example.com:8443?sni=sni.example.com&obfs=salamander&obfs-password=mask'
           '&pinSHA256=$pin&mport=20000-30000,443#hy2';
-      final c = (await builder({...warpSettings, ...chains(link)}, chainExit).build(ConnectionMode.warp)).config;
+      final c = (await builder({...warpSettings, ...chains(link),
+      }, chainExit).build(ConnectionMode.warp)).config;
       final chain = chainOf(c)!;
       expect(chain['protocol'], 'hysteria');
-      expect(chain['settings'], {'version': 2, 'address': 'hy.example.com', 'port': 8443});
+      expect(chain['settings'], {'version': 2, 'address': 'hy.example.com', 'port': 8443,
+      });
       expect(chain['streamSettings'], {
         'network': 'hysteria',
         'hysteriaSettings': {'version': 2, 'auth': 'secret'},
         'security': 'tls',
-        'tlsSettings': {'serverName': 'sni.example.com', 'pinnedPeerCertSha256': pin},
+        'tlsSettings': {'serverName': 'sni.example.com', 'pinnedPeerCertSha256': pin,
+        },
         'finalmask': {
           'udp': [
             // Last: Xray reverses the list, and udphop must come first there.
@@ -1058,14 +1211,16 @@ void main() {
             },
             {
               'type': 'udphop',
-              'settings': {'mode': 'intervalRemote,intervalLocal', 'remotePorts': '20000-30000,443'},
+              'settings': {'mode': 'intervalRemote,intervalLocal', 'remotePorts': '20000-30000,443',
+              },
             },
           ],
         },
         'sockopt': {'dialerProxy': 'exit-dialer'},
       });
       dump('warp_chain_hysteria2', c);
-      final w = (await builder(chains(link), chainExit).build(ConnectionMode.worker)).config;
+      final w = (await builder(chains(link), chainExit,
+      ).build(ConnectionMode.worker)).config;
       expect(chainOf(w), isNull);
     });
 
@@ -1073,9 +1228,10 @@ void main() {
       Future<Object?> reset(Map<String, dynamic> extra) async {
         final c = (await builder({
           ...warpSettings,
-          ...extra,
-        }).build(ConnectionMode.warp, variant: ConnectionVariant.fastestObfuscated)).config;
-        return outboundsOf(c, 'proxy-').first['streamSettings']['finalmask']['udp'][0]['settings']['reset'];
+          ...extra}).build(ConnectionMode.warp, variant: ConnectionVariant.fastestObfuscated,
+          )).config;
+        return outboundsOf(c, 'proxy-',
+          ).first['streamSettings']['finalmask']['udp'][0]['settings']['reset'];
       }
 
       expect(await reset({}), '30-60');
@@ -1085,21 +1241,25 @@ void main() {
         }),
         '5-15',
       );
-    });
+    },
+    );
 
-    test('Pro adds UDP noise to the WARP outbounds', () async {
+    test('Obfuscation adds UDP noise to the WARP outbounds', () async {
       final c = (await builder(
-        warpSettings,
-      ).build(ConnectionMode.warp, variant: ConnectionVariant.fastestObfuscated)).config;
+        warpSettings).build(ConnectionMode.warp, variant: ConnectionVariant.fastestObfuscated,
+      )).config;
       final proxies = outboundsOf(c, 'proxy-');
-      expect(proxies.every((o) => o['streamSettings']['finalmask']['udp'][0]['type'] == 'noise'), isTrue);
+      expect(proxies.every((o) => o['streamSettings']['finalmask']['udp'][0]['type'] == 'noise',
+        ), isTrue,
+      );
       final noise = proxies.first['streamSettings']['finalmask']['udp'][0]['settings']['noise'] as List;
       expect(noise.length, 5); // the default: random 50-100 bytes, 5 times
-      expect(noise.first, {'rand': '50-100', 'randRange': '0-255', 'delay': '1-5'});
+      expect(noise.first, {'rand': '50-100', 'randRange': '0-255', 'delay': '1-5',
+      });
       dump('warp_pro_best', c);
     });
 
-    test('WARP Pro passes every noise type through to Xray', () async {
+    test('WARP obfuscation passes every noise type through to Xray', () async {
       final noises = [
         for (final exp in noiseExpPresets.values) {'type': 'exp', 'packet': exp, 'count': 1, 'delay': r(1, 5)},
         {'type': 'rand', 'size': r(50, 100), 'count': 2, 'delay': r(1, 5)},
@@ -1113,13 +1273,16 @@ void main() {
       ];
       final c = (await builder({
         ...warpSettings,
-        'udpNoises': noises,
-      }).build(ConnectionMode.warp, variant: ConnectionVariant.fastestObfuscated)).config;
+        'udpNoises': noises}).build(ConnectionMode.warp, variant: ConnectionVariant.fastestObfuscated,
+      )).config;
       final noise =
-          outboundsOf(c, 'proxy-').first['streamSettings']['finalmask']['udp'][0]['settings']['noise'] as List;
+          outboundsOf(c, 'proxy-',
+              ).first['streamSettings']['finalmask']['udp'][0]['settings']['noise'] as List;
       expect(noise.length, noiseExpPresets.length + 4);
-      expect(noise.first, {'type': 'exp', 'packet': noiseExpPresets.values.first, 'delay': '1-5'});
-      expect(noise[noiseExpPresets.length], {'rand': '50-100', 'randRange': '0-255', 'delay': '1-5'});
+      expect(noise.first, {'type': 'exp', 'packet': noiseExpPresets.values.first, 'delay': '1-5',
+      });
+      expect(noise[noiseExpPresets.length], {'rand': '50-100', 'randRange': '0-255', 'delay': '1-5',
+      });
       expect(noise[noiseExpPresets.length + 2], {
         'type': 'array',
         'packet': [1, 10, 128],
@@ -1129,20 +1292,6 @@ void main() {
       dump('warp_pro_noise_types', c);
     });
 
-    test('Smart Obfuscation: one outbound per noise size on the first endpoint', () async {
-      final c = (await builder(warpSettings).build(ConnectionMode.warp, variant: ConnectionVariant.smart)).config;
-      final proxies = outboundsOf(c, 'proxy-');
-      expect(proxies.length, XrayConfigBuilder.smartLengths.length);
-      for (var i = 0; i < proxies.length; i++) {
-        expect(proxies[i]['settings']['peers'][0]['endpoint'], 'engage.cloudflareclient.com:2408');
-        final noises = proxies[i]['streamSettings']['finalmask']['udp'][0]['settings']['noise'] as List;
-        expect(noises.length, 5);
-        // Size from the smart list; delay from the first noise (default 1-5).
-        expect(noises.every((n) => n['rand'] == XrayConfigBuilder.smartLengths[i] && n['delay'] == '1-5'), isTrue);
-      }
-      expect(c['routing']['balancers'][0]['tag'], 'all-proxies');
-      dump('warp_pro_smart', c);
-    });
   });
 
   test('ECH fetches its config from the ECH DNS (IPv4 or DoH with an IPv4 host), dialed directly', () async {
@@ -1160,15 +1309,19 @@ void main() {
     expect(byDefault['echSockopt'], {'dialerProxy': 'direct'});
 
     expect((await tls({'dns': '1.1.1.1'}))['echConfigList'], 'udp://1.1.1.1');
-    expect((await tls({'dns': '2001:4860:4860::8888'}))['echConfigList'], 'udp://[2001:4860:4860::8888]');
+    expect((await tls({'dns': '2001:4860:4860::8888'}))['echConfigList'], 'udp://[2001:4860:4860::8888]',
+    );
     expect(
-      (await tls({'dns': 'https://[2001:4860:4860::8888]/dns-query'}))['echConfigList'],
+      (await tls({'dns': 'https://[2001:4860:4860::8888]/dns-query',
+      }))['echConfigList'],
       'https://[2001:4860:4860::8888]/dns-query',
     );
     // DoH with an IPv4 host, as in BPB: passed as is.
-    expect((await tls({'dns': 'https://1.1.1.1/dns-query'}))['echConfigList'], 'https://1.1.1.1/dns-query');
+    expect((await tls({'dns': 'https://1.1.1.1/dns-query'}))['echConfigList'], 'https://1.1.1.1/dns-query',
+    );
     expect(
-      (await tls({'serverName': 'cloudflare-ech.com', 'dns': 'https://1.1.1.1/dns-query'}))['echConfigList'],
+      (await tls({'serverName': 'cloudflare-ech.com', 'dns': 'https://1.1.1.1/dns-query',
+      }))['echConfigList'],
       'cloudflare-ech.com+https://1.1.1.1/dns-query',
     );
 
@@ -1177,14 +1330,17 @@ void main() {
       'vless': {
         'ech': {'enabled': true},
       },
-    }).build(ConnectionMode.worker, variant: ConnectionVariant.fastestObfuscated)).config;
+    }).build(ConnectionMode.worker, variant: ConnectionVariant.fastestObfuscated,
+            )).config;
     final fTls = (f['outbounds'] as List).first['streamSettings']['tlsSettings'] as Map;
     expect(fTls.containsKey('echSockopt'), isFalse);
   });
 
   test('Browser Dialer: one outbound to the custom domain, no balancer, no TLS extras', () async {
-    final c = (await builder(everything).build(ConnectionMode.worker, variant: ConnectionVariant.browserDialer)).config;
-    final proxy = (c['outbounds'] as List).cast<Map>().singleWhere((o) => (o['tag'] as String).startsWith('proxy'));
+    final c = (await builder(everything).build(ConnectionMode.worker, variant: ConnectionVariant.browserDialer,
+    )).config;
+    final proxy = (c['outbounds'] as List).cast<Map>().singleWhere((o) => (o['tag'] as String).startsWith('proxy'),
+    );
     expect(proxy['tag'], 'proxy');
     expect(proxy['settings']['address'], worker.customDomain);
     expect(proxy['settings']['port'], 443);
@@ -1196,7 +1352,8 @@ void main() {
     });
     expect(stream.containsKey('finalmask'), isFalse);
     expect(c['routing'].containsKey('balancers'), isFalse);
-    expect(ConnectionVariant.of(ConnectionMode.warp), isNot(contains(ConnectionVariant.browserDialer)));
+    expect(ConnectionVariant.of(ConnectionMode.warp), isNot(contains(ConnectionVariant.browserDialer)),
+    );
     dump('browser_dialer', c);
   });
 
@@ -1218,30 +1375,33 @@ void main() {
     }).build(ConnectionMode.serverless)).config;
     final mask = outboundsOf(c, 'proxy').single['streamSettings']['finalmask'] as Map;
     expect((mask['tcp'] as List).single['settings']['lengths'], ['7-9']);
-    final noise = outboundsOf(c, 'udp-noise').single['streamSettings']['finalmask']['udp'].single['settings'] as Map;
+    final noise = outboundsOf(c, 'udp-noise',
+            ).single['streamSettings']['finalmask']['udp'].single['settings'] as Map;
     expect(noise['reset'], '3-4');
     expect((noise['noise'] as List).single['rand'], '11-22');
   });
 
-  test('Smart Fragment: one outbound per fragment length, keeping each card', () async {
-    final c = (await builder(everything).build(ConnectionMode.worker, variant: ConnectionVariant.smart)).config;
+  test(
+    'Fragment: uses configured fragments without generated presets', () async {
+    final c = (await builder(everything).build(ConnectionMode.worker, variant: ConnectionVariant.fastestObfuscated,
+      )).config;
     final proxies = outboundsOf(c, 'proxy-');
-    expect(proxies.length, XrayConfigBuilder.smartLengths.length);
-    for (var i = 0; i < proxies.length; i++) {
-      expect(proxies[i]['settings']['address'], worker.host);
-      expect(proxies[i]['settings']['port'], 443);
-      final masks = proxies[i]['streamSettings']['finalmask']['tcp'] as List;
+    expect(proxies, isNotEmpty);
+    for (final proxy in proxies) {
+        final masks = proxy['streamSettings']['finalmask']['tcp'] as List;
       expect(masks.length, 2);
       expect(
-        masks.every((m) => (m['settings']['lengths'] as List).single == XrayConfigBuilder.smartLengths[i]),
-        isTrue,
-      );
-      expect(masks.first['settings']['delays'], ['10-20']);
+        masks[0]['settings'], {
+          'packets': 'tlshello',
+          'lengths': ['3-5', '6-8', '10-20'],
+          'delays': ['10-20'],
+          'maxSplit': '3-6',
+        });
+        expect(masks[1]['settings']['lengths'], ['100-200']);
     }
-    // The worker host resolves to static IPs, like BPB.
-    expect(c['dns']['hosts'][worker.host], isNotEmpty);
-    dump('fragment_smart', c);
-  });
+      dump('worker_fragment', c);
+  },
+  );
 
   test('upstream proxy is an extra TLS server, not used with fragment', () async {
     final b = builder({
@@ -1251,20 +1411,27 @@ void main() {
       },
     });
     final c = (await b.build(ConnectionMode.worker)).config;
-    final relays = outboundsOf(c, 'proxy-').where((o) => o['settings']['address'] == 'relay.example.org').toList();
+    final relays = outboundsOf(c, 'proxy-',
+      ).where((o) => o['settings']['address'] == 'relay.example.org').toList();
     expect(relays.length, 2); // one per worker domain
     expect(relays.first['settings']['port'], 8443);
     final stream = relays.first['streamSettings'] as Map;
-    expect(stream['security'], 'tls'); // always TLS even on a non-Cloudflare port
+    expect(stream['security'], 'tls',
+      ); // always TLS even on a non-Cloudflare port
     expect(worker.domains, contains(stream['wsSettings']['host']));
     dump('upstream_best', c);
 
-    final frag = (await b.build(ConnectionMode.worker, variant: ConnectionVariant.fastestObfuscated)).config;
-    expect((frag['outbounds'] as List).any((o) => o['settings']?['address'] == 'relay.example.org'), isFalse);
-  });
+    final frag = (await b.build(ConnectionMode.worker, variant: ConnectionVariant.fastestObfuscated,
+      )).config;
+    expect((frag['outbounds'] as List).any((o) => o['settings']?['address'] == 'relay.example.org',
+        ), isFalse,
+      );
+  },
+  );
 
   test('Proxy mode has no TUN inbound, only the local mixed proxy', () async {
-    final c = (await builder(everything, {'appMode': 'proxy'}).build(ConnectionMode.worker)).config;
+    final c = (await builder(everything, {'appMode': 'proxy',
+    }).build(ConnectionMode.worker)).config;
     final inbounds = (c['inbounds'] as List).cast<Map>();
     expect(inbounds.map((i) => i['tag']), ['mixed-in']);
     expect(inbounds.single['port'], XrayConfigBuilder.localProxyPort);
@@ -1273,11 +1440,13 @@ void main() {
 
   test('LAN sharing: 0.0.0.0, with password auth only when both login fields are set', () async {
     Future<Map> mixed(Map<String, dynamic> lan) async {
-      final c = (await builder({}, {'lanSharing': lan}).build(ConnectionMode.worker)).config;
+      final c = (await builder({}, {'lanSharing': lan,
+      }).build(ConnectionMode.worker)).config;
       return (c['inbounds'] as List).firstWhere((i) => i['tag'] == 'mixed-in') as Map;
     }
 
-    final login = await mixed({'enabled': true, 'username': 'me', 'password': 'p@ss'});
+    final login = await mixed({'enabled': true, 'username': 'me', 'password': 'p@ss',
+    });
     expect(login['listen'], '0.0.0.0');
     expect(login['settings'], {
       'auth': 'password',
@@ -1288,22 +1457,27 @@ void main() {
     });
     const noauth = {'auth': 'noauth', 'udp': true};
     // LAN off: localhost only, no login even if one is saved.
-    final off = await mixed({'enabled': false, 'username': 'me', 'password': 'x'});
+    final off = await mixed({'enabled': false, 'username': 'me', 'password': 'x',
+    });
     expect(off['listen'], '127.0.0.1');
     expect(off['settings'], noauth);
     // Only one field: no login (both are optional, but they go together).
-    expect((await mixed({'enabled': true, 'username': 'me'}))['settings'], noauth);
+    expect((await mixed({'enabled': true, 'username': 'me'}))['settings'], noauth,
+    );
   });
 
   test('proxy uri parser handles common formats', () {
-    final vless = ProxyUri.parse('vless://uuid-1@[2001:db8::1]:443?type=ws&path=%2Fa%3Fed%3D2560#My%20Server');
+    final vless = ProxyUri.parse('vless://uuid-1@[2001:db8::1]:443?type=ws&path=%2Fa%3Fed%3D2560#My%20Server',
+    );
     expect(vless.server, '2001:db8::1');
     expect(vless['path'], '/a?ed=2560');
     expect(vless.remark, 'My Server');
-    final ss = ProxyUri.parse('ss://${base64.encode(utf8.encode('aes-256-gcm:pw@host.example:8388'))}');
+    final ss = ProxyUri.parse('ss://${base64.encode(utf8.encode('aes-256-gcm:pw@host.example:8388'))}',
+    );
     expect(ss['method'], 'aes-256-gcm');
     expect(ss.port, 8388);
-    final socks = ProxyUri.parse('socks://${base64.encode(utf8.encode('u:p'))}@h.example:1080');
+    final socks = ProxyUri.parse('socks://${base64.encode(utf8.encode('u:p'))}@h.example:1080',
+    );
     expect(socks['user'], 'u');
     expect(socks['pass'], 'p');
   });

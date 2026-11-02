@@ -162,7 +162,7 @@ class _Row extends StatelessWidget {
   }
 }
 
-/// Connection types. Every type except Serverless connects with a best-ping (or Smart) config.
+/// Connection types. Every type except Serverless connects with a best-ping config.
 class _TypeSelector extends StatelessWidget {
   const _TypeSelector();
 
@@ -192,7 +192,7 @@ class _TypeSelector extends StatelessWidget {
   }
 }
 
-/// Serverless: Fragment or Domain Fronting. Tor: which bridges. Worker / WARP / MASQUE: the variant.
+/// Serverless: Fragment or Domain Fronting. Tor: bridges. MASQUE: mode. Worker / WARP: variant.
 class _ModeSelector extends StatelessWidget {
   const _ModeSelector();
 
@@ -204,7 +204,7 @@ class _ModeSelector extends StatelessWidget {
       return ChipMenu(
         values: MasqueVariant.values,
         selected: state.masqueVariant,
-        label: (v) => v.label,
+        label: (v) => v.label(state.profile.masque.transport == 'h3'),
         onSelected: state.setMasqueVariant,
         enabled: !state.isBusy,
       );

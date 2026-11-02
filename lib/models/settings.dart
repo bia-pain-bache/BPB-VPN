@@ -20,6 +20,9 @@ import '../services/warp.dart';
 
 String _str(Object? v, String def) => v is String ? v : def;
 
+String _choice(Object? value, Set<String> choices, String fallback) =>
+    value is String && choices.contains(value) ? value : fallback;
+
 String? _strOrNull(Object? v) => v is String && v.trim().isNotEmpty ? v.trim() : null;
 
 bool _bool(Object? v, bool def) => v is bool ? v : def;
@@ -44,7 +47,8 @@ Object? readPath(Map<String, dynamic> json, String path) {
 }
 
 /// Returns a copy of [json] with [path] set to [value].
-Map<String, dynamic> writePath(Map<String, dynamic> json, String path, Object? value) {
+Map<String, dynamic> writePath(Map<String, dynamic> json, String path, Object? value,
+) {
   final keys = path.split('.');
   Map<String, dynamic> write(Map<String, dynamic> node, int i) {
     final copy = Map<String, dynamic>.of(node);
@@ -57,7 +61,8 @@ Map<String, dynamic> writePath(Map<String, dynamic> json, String path, Object? v
 
 /// The parts of [json] that differ from [defaults] (objects compared field by field,
 /// lists as a whole).
-Map<String, dynamic> sparseDiff(Map<String, dynamic> json, Map<String, dynamic> defaults) {
+Map<String, dynamic> sparseDiff(Map<String, dynamic> json, Map<String, dynamic> defaults,
+) {
   final out = <String, dynamic>{};
   for (final e in json.entries) {
     final def = defaults[e.key];
@@ -117,10 +122,12 @@ class DnsServer {
 
   static DnsServer parse(Object? v, DnsServer def) {
     if (v is! Map) return def;
-    return DnsServer(_str(v['server'], def.server), _strList(v['bootstrapIps'], const []));
+    return DnsServer(_str(v['server'], def.server), _strList(v['bootstrapIps'], const []),
+    );
   }
 
-  Map<String, dynamic> toJson() => {'server': server, 'bootstrapIps': bootstrapIps};
+  Map<String, dynamic> toJson() => {'server': server, 'bootstrapIps': bootstrapIps,
+  };
 }
 
 /// Which packets a fragment card splits: the TLS ClientHello or the first N packets.
@@ -242,7 +249,8 @@ class RuleGroup {
     final j = _map(v);
     final stored = _map(j['presets']);
     return RuleGroup(
-      {for (final e in defaults.presets.entries) e.key: _bool(stored[e.key], e.value)},
+      {for (final e in defaults.presets.entries) e.key: _bool(stored[e.key], e.value),
+      },
       domains: _strList(j['domains'], const []),
       ips: _strList(j['ips'], const []),
     );
@@ -250,7 +258,8 @@ class RuleGroup {
 
   bool isOn(String preset) => presets[preset] ?? false;
 
-  Map<String, dynamic> toJson() => {'presets': presets, 'domains': domains, 'ips': ips};
+  Map<String, dynamic> toJson() => {'presets': presets, 'domains': domains, 'ips': ips,
+  };
 }
 
 // endregion
@@ -321,7 +330,8 @@ class EchSettings {
 
   /// The DNS server the ECH config is fetched from: an IP, or DoH with an IP host.
   final String dns;
-  const EchSettings({this.enabled = false, this.serverName, this.dns = '8.8.8.8'});
+  const EchSettings({this.enabled = false, this.serverName, this.dns = '8.8.8.8',
+  });
 
   static EchSettings parse(Object? v) {
     final j = _map(v);
@@ -333,7 +343,8 @@ class EchSettings {
     );
   }
 
-  Map<String, dynamic> toJson() => {'enabled': enabled, 'serverName': serverName, 'dns': dns};
+  Map<String, dynamic> toJson() => {'enabled': enabled, 'serverName': serverName, 'dns': dns,
+  };
 }
 
 class CustomCdnSettings {
@@ -341,7 +352,8 @@ class CustomCdnSettings {
   final List<String> addresses;
   final String? host;
   final String? sni;
-  const CustomCdnSettings({this.enabled = false, this.addresses = const [], this.host, this.sni});
+  const CustomCdnSettings({this.enabled = false, this.addresses = const [], this.host, this.sni,
+  });
 
   static CustomCdnSettings parse(Object? v) {
     final j = _map(v);
@@ -355,7 +367,8 @@ class CustomCdnSettings {
     );
   }
 
-  Map<String, dynamic> toJson() => {'enabled': enabled, 'addresses': addresses, 'host': host, 'sni': sni};
+  Map<String, dynamic> toJson() => {'enabled': enabled, 'addresses': addresses, 'host': host, 'sni': sni,
+  };
 }
 
 class VlessSettings {
@@ -454,7 +467,8 @@ class WarpSettings {
       remoteDns: _str(j['remoteDns'], d.remoteDns),
       endpoints: _strList(j['endpoints'], d.endpoints),
       speedTestInterval: _int(j['speedTestInterval'], d.speedTestInterval),
-      enableReservedBytes: _bool(j['enableReservedBytes'], d.enableReservedBytes),
+      enableReservedBytes: _bool(j['enableReservedBytes'], d.enableReservedBytes,
+      ),
       account: j['account'] is Map ? WarpAccount.fromJson(_map(j['account'])) : null,
     );
   }
@@ -468,8 +482,8 @@ class WarpSettings {
   };
 }
 
-/// The MASQUE type: WARP over CONNECT-IP (HTTP/2 or 3), with its own account, fragments and
-/// UDP noises (defaults like the profile's).
+/// The MASQUE type: WARP over CONNECT-IP (HTTP/2 or 3), with its own transport setting, account,
+/// fragments and UDP noises (defaults like the profile's).
 /// Serverless's own fragments and UDP noises (defaults like the profile's).
 class ServerlessSettings {
   final List<Fragment> fragments;
@@ -506,6 +520,9 @@ class ServerlessSettings {
 }
 
 class MasqueSettings {
+  /// Transport used by MASQUE: HTTP/2 over TCP or HTTP/3 over QUIC.
+  final String transport;
+
   /// IP of the DNS server used through the tunnel.
   final String remoteDns;
 
@@ -514,10 +531,10 @@ class MasqueSettings {
   final List<String> endpoints;
   final int speedTestInterval;
 
-  /// Smart Fragment H2's packets and delays (its lengths are the smart ones).
+  /// MASQUE H2 fragments' packets and delays (the lengths are selected by the mode).
   final List<Fragment> fragments;
 
-  /// Smart Obfuscation H3's noise delay and reset interval (its sizes are the smart ones).
+  /// MASQUE H3 noise delay and reset interval (the sizes are selected by the mode).
   final List<UdpNoise> udpNoises;
   final Range udpNoiseReset;
 
@@ -527,6 +544,7 @@ class MasqueSettings {
   static const defaultSni = 'speed.cloudflare.com';
 
   const MasqueSettings({
+    this.transport = 'h2',
     this.remoteDns = '1.1.1.1',
     this.sni = defaultSni,
     // Set from the account's enrollment (see AppState.renewMasqueAccount).
@@ -542,6 +560,7 @@ class MasqueSettings {
     final j = _map(v);
     const d = MasqueSettings();
     return MasqueSettings(
+      transport: j['transport'] == 'h3' ? 'h3' : d.transport,
       remoteDns: _str(j['remoteDns'], d.remoteDns),
       sni: _str(j['sni'], d.sni),
       endpoints: _strList(j['endpoints'], d.endpoints),
@@ -558,6 +577,7 @@ class MasqueSettings {
   }
 
   Map<String, dynamic> toJson() => {
+    'transport': transport,
     'remoteDns': remoteDns,
     'sni': sni,
     'endpoints': endpoints,
@@ -587,7 +607,9 @@ class TorSettings {
 
   static TorSettings parse(Object? v) {
     final j = _map(v);
-    return TorSettings(bridges: _strList(j['bridges'], const []).where(isBridge).map(normalize).toList());
+    return TorSettings(bridges: _strList(j['bridges'], const [],
+      ).where(isBridge).map(normalize).toList(),
+    );
   }
 
   Map<String, dynamic> toJson() => {'bridges': bridges};
@@ -596,7 +618,8 @@ class TorSettings {
 /// Built-in routing presets, each with its default and how it behaves.
 class RoutingPresets {
   /// Direct, resolved with the local DNS, matched by domain and IP; BitTorrent by protocol.
-  static const bypass = {'iran': false, 'china': false, 'russia': false, 'bittorrent': false};
+  static const bypass = {'iran': false, 'china': false, 'russia': false, 'bittorrent': false,
+  };
 
   /// Direct, resolved with the anti-sanction DNS, matched by domain only.
   static const sanctionBypass = {
@@ -668,7 +691,7 @@ class Profile {
   /// device's choice (DeviceSettings.exitChains).
   final List<ChainProxy> chains;
 
-  /// Used by Worker's fragment variants.
+  /// Used by Worker's Fragment mode.
   final List<Fragment> fragments;
 
   /// Used by WARP's obfuscated variants.
@@ -678,7 +701,8 @@ class Profile {
   final Range udpNoiseReset;
   final RoutingSettings routing;
 
-  static const defaultUdpNoises = [UdpNoise(type: NoiseType.rand, size: Range(50, 100), count: 5)];
+  static const defaultUdpNoises = [UdpNoise(type: NoiseType.rand, size: Range(50, 100), count: 5),
+  ];
   static const defaultUdpNoiseReset = Range(30, 60);
 
   const Profile({
@@ -882,7 +906,7 @@ class DeviceSettings {
   final String workerVariant;
   final String warpVariant;
 
-  /// MASQUE's MasqueVariant name.
+  /// MASQUE's normal / obfuscation mode.
   final String masqueVariant;
 
   /// Serverless's ServerlessMode name.
@@ -922,7 +946,7 @@ class DeviceSettings {
     this.connectionType = 'worker',
     this.workerVariant = 'fastest',
     this.warpVariant = 'fastest',
-    this.masqueVariant = 'fastestH2',
+    this.masqueVariant = 'normal',
     this.serverlessMode = 'fragment',
     this.torBridge = 'snowflake',
     this.exitNode = ExitNode.worker,
@@ -944,13 +968,10 @@ class DeviceSettings {
     final theme = _map(j['theme']);
     final region = _str(exit['region'], d.exitRegion);
     final bridge = _str(connection['torBridge'], d.torBridge);
-    // Before the variants, Fragment and WARP Pro were types of their own with a Smart switch;
-    // Worker was called Normal.
+    // Older connection types that had a separate Fragment or WARP Pro mode.
     final type = _str(connection['type'], d.connectionType);
-    String legacyVariant(String obfuscatedType, String smartKey) => type != obfuscatedType
+    String legacyVariant(String obfuscatedType) => type != obfuscatedType
         ? 'fastest'
-        : _bool(connection[smartKey], false)
-        ? 'smart'
         : 'fastestObfuscated';
     return DeviceSettings(
       appMode: AppMode.values.asNameMap()[j['appMode']] ?? d.appMode,
@@ -966,12 +987,24 @@ class DeviceSettings {
         'warpPro' => 'warp',
         _ => type,
       },
-      workerVariant: _str(
-        connection['workerVariant'],
-        _str(connection['normalVariant'], legacyVariant('fragment', 'smartFragment')),
+      workerVariant: _choice(
+        _str(
+          connection['workerVariant'],
+          _str(connection['normalVariant'], legacyVariant('fragment')),
+        ),
+        const {'fastest', 'fastestObfuscated', 'browserDialer'},
+        d.workerVariant,
       ),
-      warpVariant: _str(connection['warpVariant'], legacyVariant('warpPro', 'smartObfuscation')),
-      masqueVariant: _str(connection['masqueVariant'], d.masqueVariant),
+      warpVariant: _choice(
+        _str(connection['warpVariant'], legacyVariant('warpPro')),
+        const {'fastest', 'fastestObfuscated'},
+        d.warpVariant,
+      ),
+      masqueVariant: _choice(
+        connection['masqueVariant'],
+        const {'normal', 'obfuscation'},
+        d.masqueVariant,
+      ),
       serverlessMode: _str(connection['serverlessMode'], d.serverlessMode),
       torBridge: torBridges.containsKey(bridge) ? bridge : d.torBridge,
       exitNode: ExitNode.values.asNameMap()[exit['node']] ?? d.exitNode,
@@ -997,7 +1030,8 @@ class DeviceSettings {
     'logLevel': logLevel,
     'mtu': mtu,
     'perAppProxy': {'mode': perAppMode.name, 'apps': perAppApps},
-    'lanSharing': {'enabled': lanSharing, 'username': lanUsername, 'password': lanPassword},
+    'lanSharing': {'enabled': lanSharing, 'username': lanUsername, 'password': lanPassword,
+    },
     'connection': {
       'type': connectionType,
       'workerVariant': workerVariant,

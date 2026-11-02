@@ -125,7 +125,7 @@ class SettingsPage extends StatelessWidget {
                 'Enable IPv6',
                 icon: Symbols.counter_6_rounded,
                 subtitle:
-                    'Enable IPv6 servers and settings. Choose base on your ISP',
+                    'Enable IPv6 connection. Choose based on your ISP',
               ),
               const SwitchPref(
                 'device.lanSharing.enabled',
@@ -356,7 +356,7 @@ class SettingsPage extends StatelessWidget {
               ),
               ListTile(
                 leading: const Icon(Symbols.graphic_eq_rounded),
-                title: const Text('UDP obfuscation'),
+                title: const Text('UDP Obfuscation'),
                 subtitle: Text(
                   '${p.udpNoises.length} noise${p.udpNoises.length == 1 ? '' : 's'}',
                 ),
@@ -406,6 +406,12 @@ class SettingsPage extends StatelessWidget {
                 hint: MasqueSettings.defaultSni,
                 validator: validateHost,
               ),
+              const ChoicePref(
+                'masque.transport',
+                'Transport',
+                {'h2': 'H2', 'h3': 'H3'},
+                icon: Symbols.swap_horiz_rounded,
+              ),
               ListTile(
                 leading: const Icon(Symbols.view_week_rounded),
                 title: const Text('H2 TCP Fragments'),
@@ -419,7 +425,7 @@ class SettingsPage extends StatelessWidget {
               ),
               ListTile(
                 leading: const Icon(Symbols.graphic_eq_rounded),
-                title: const Text('H3 UDP obfuscation'),
+                title: const Text('H3 UDP Obfuscation'),
                 subtitle: Text(
                   '${p.masque.udpNoises.length} noise${p.masque.udpNoises.length == 1 ? '' : 's'}',
                 ),
@@ -486,7 +492,7 @@ class SettingsPage extends StatelessWidget {
               ),
               ListTile(
                 leading: const Icon(Symbols.graphic_eq_rounded),
-                title: const Text('UDP obfuscation'),
+                title: const Text('UDP Obfuscation'),
                 subtitle: Text(
                   '${p.serverless.udpNoises.length} noise${p.serverless.udpNoises.length == 1 ? '' : 's'}',
                 ),

@@ -110,7 +110,6 @@ class AppState extends ChangeNotifier {
   VpnStatus status = VpnStatus.disconnected;
   String? error;
   DateTime? connectedAt;
-  String activeRemark = '';
 
   /// Settings changed while connected; reconnect to apply them.
   bool needsReconnect = false;
@@ -582,7 +581,6 @@ class AppState extends ChangeNotifier {
 
   Future<void> _start() async {
     final build = await buildConfig();
-    activeRemark = build.remark;
     // The Psiphon / Tor types connect directly. As an exit, Psiphon / Tor run only when the
     // config has their upstream inbound.
     final exitType = switch (mode) {

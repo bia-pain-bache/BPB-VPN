@@ -716,17 +716,39 @@ class _InstallStepState extends State<_InstallStep> {
     } else if (!_busy && failed.isNotEmpty) {
       // One set of choices for whatever failed.
       buttons = [
-        TextButton(onPressed: _skip, child: const Text('Skip for now')),
-        const SizedBox(width: 8),
-        if (offerTor) ...[
-          Expanded(
-            child: OutlinedButton(onPressed: _retryWithTor, child: const Text('Retry with Tor')),
-          ),
-          const SizedBox(width: 12),
-        ] else
-          const Spacer(),
         Expanded(
-          child: FilledButton(onPressed: () => _run(failed), child: const Text('Retry')),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: TextButton(
+                  onPressed: _skip,
+                  child: const Text('Skip for now'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  if (offerTor) ...[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _retryWithTor,
+                        child: const Text('Retry with Tor'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ] else
+                    const Spacer(),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => _run(failed),
+                      child: const Text('Retry'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ];
     } else {

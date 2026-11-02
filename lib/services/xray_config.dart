@@ -47,48 +47,44 @@ enum ConnectionMode {
   bool get hasVariants => this == worker || this == warp;
 }
 
-/// Worker and WARP configs: Best Ping without or with obfuscation (TLS fragmentation for
-/// Worker, UDP noise for WARP), or Smart (one outbound per fragment length / noise size).
-/// Worker also has Browser Dialer (a test): its WebSocket opened by a WebView.
+/// Worker: Normal, Fragment or Browser Dialer. WARP: Normal or Obfuscation.
 enum ConnectionVariant {
   fastest,
   fastestObfuscated,
-  smart,
   browserDialer;
 
-  bool get obfuscated => this == fastestObfuscated || this == smart;
+  bool get obfuscated => this == fastestObfuscated;
 
   /// The variants [mode] offers.
   static List<ConnectionVariant> of(ConnectionMode mode) =>
       mode == ConnectionMode.worker
-      ? values
-      : const [fastest, fastestObfuscated, smart];
+      ? const [fastest, fastestObfuscated, browserDialer]
+      : const [fastest, fastestObfuscated];
 
   String label(ConnectionMode mode) {
-    final obfuscation = mode == ConnectionMode.warp
-        ? 'Obfuscation'
-        : 'Fragment';
+    if (mode == ConnectionMode.worker) {
+      return switch (this) {
+        fastest => 'Normal',
+        fastestObfuscated => 'Fragment',
+        browserDialer => 'Browser Dialer',
+      };
+    }
     return switch (this) {
-      fastest => 'Fastest',
-      fastestObfuscated => 'Fastest $obfuscation',
-      smart => 'Smart $obfuscation',
+      fastest => 'Normal',
+      fastestObfuscated => 'Obfuscation',
       browserDialer => 'Browser Dialer',
     };
   }
 }
 
-/// MASQUE configs: Best Ping over HTTP/2 (TCP) or HTTP/3 (QUIC), or Smart: one outbound per
-/// fragment length (H2, TLS over TCP) or noise size (H3, QUIC over UDP).
+/// MASQUE's home-page mode. Transport is chosen in MASQUE settings.
 enum MasqueVariant {
-  fastestH2('Fastest H2', h3: false, smart: false),
-  smartFragmentH2('Smart Fragment H2', h3: false, smart: true),
-  fastestH3('Fastest H3', h3: true, smart: false),
-  smartObfuscationH3('Smart Obfuscation H3', h3: true, smart: true);
+  normal, obfuscation;
 
-  final String label;
-  final bool h3;
-  final bool smart;
-  const MasqueVariant(this.label, {required this.h3, required this.smart});
+  String label(bool h3) => switch (this) {
+    normal => 'Normal',
+    obfuscation => h3 ? 'Obfuscation' : 'Fragment',
+  };
 }
 
 /// Serverless configs: TLS fragmentation and UDP noise, or patterniha's MITM domain fronting
@@ -103,8 +99,7 @@ enum ServerlessMode {
 
 class XrayBuild {
   final Map<String, dynamic> config;
-  final String remark;
-  const XrayBuild(this.config, this.remark);
+  const XrayBuild(this.config);
 }
 
 typedef HostResolver = Future<List<String>> Function(
@@ -136,9 +131,8 @@ class XrayConfigBuilder {
   /// or Psiphon's own resolver (psiphon/dns.go).
   static const exitDnsPort = 10830;
 
-  /// Smart Fragment's fragment lengths, also used as Smart Obfuscation's noise sizes:
-  /// one outbound per value, and Best Ping keeps whichever works fastest.
-  static const smartLengths = [
+  /// MASQUE H3 obfuscation creates one outbound per size and lets Best Ping choose the fastest.
+  static const masqueNoiseSizes = [
     '1-5',
     '1-10',
     '10-20',
@@ -148,7 +142,7 @@ class XrayConfigBuilder {
     '50-60',
     '60-70',
     '70-80',
-    '80-90', //
+    '80-90',
     '90-100',
     '10-30',
     '20-40',
@@ -161,8 +155,8 @@ class XrayConfigBuilder {
     '100-200',
   ];
 
-  /// Noise packets per outbound in Smart Obfuscation.
-  static const _smartNoiseCount = 5;
+  /// Noise packets per MASQUE H3 obfuscation outbound.
+  static const _masqueNoiseCount = 5;
 
   final Profile profile;
   final DeviceSettings device;
@@ -282,7 +276,7 @@ class XrayConfigBuilder {
 
   static MasqueVariant masqueVariantOf(DeviceSettings device) =>
       MasqueVariant.values.asNameMap()[device.masqueVariant] ??
-      MasqueVariant.fastestH2;
+      MasqueVariant.normal;
 
   static ServerlessMode serverlessModeOf(DeviceSettings device) =>
       ServerlessMode.values.asNameMap()[device.serverlessMode] ??
@@ -307,7 +301,7 @@ class XrayConfigBuilder {
   /// process's inbound (psiphon-in / tor-in), or chain-in, the chain proxy's loopback.
   String get _exitInbound => '${_exit.name}-in';
 
-  /// Exit name in remarks.
+  /// Exit name shown in the notification.
   static String exitLabel(ExitNode node) =>
       node == ExitNode.tor ? 'Tor' : 'Psiphon';
 
@@ -380,17 +374,12 @@ class XrayConfigBuilder {
   Future<XrayBuild> build(
     ConnectionMode mode, {
     ConnectionVariant variant = ConnectionVariant.fastest,
-  }) async {
+  }) {
     _exit = exitFor(mode, device, profile.chains);
     _mode = mode;
     _v23 = null;
     _exitType = mode == ConnectionMode.psiphon || mode == ConnectionMode.tor;
-    final build = await _build(mode, variant);
-    if (!_isExitProcess) return build;
-    final exit =
-        '${exitLabel(_exit)}${device.exitRegion.isEmpty ? '' : ' ${device.exitRegion}'}';
-    if (_exitType) return XrayBuild(build.config, exit);
-    return XrayBuild(build.config, '${build.remark} · $exit');
+    return _build(mode, variant);
   }
 
   Future<XrayBuild> _build(
@@ -410,22 +399,21 @@ class XrayConfigBuilder {
       }
       return _buildExitOnly();
     }
-    if (mode == ConnectionMode.masque)
+    if (mode == ConnectionMode.masque) {
       return _buildMasque(masqueVariantOf(device));
-    if (mode.isWarp && variant == ConnectionVariant.smart)
-      return _buildSmartObfuscation();
+    }
     if (mode.isWarp) return _buildWarp(variant.obfuscated);
 
     final p = worker;
-    if (p == null || uuid == null)
+    if (p == null || uuid == null) {
       throw StateError('Deploy or select a worker first');
+    }
     final isFragment = variant.obfuscated;
     final chain = _chainOutbounds();
 
-    if (variant == ConnectionVariant.smart)
-      return _buildSmartFragment(p, chain);
-    if (variant == ConnectionVariant.browserDialer)
+    if (variant == ConnectionVariant.browserDialer) {
       return _buildBrowserDialer(p, chain);
+    }
     return _buildBestPing(p, isFragment, chain);
   }
 
@@ -468,39 +456,7 @@ class XrayConfigBuilder {
       outboundAddrs: const [],
     );
     return XrayBuild(
-      config,
-      '${chain.isNotEmpty ? '🔗 ' : ''}Browser Dialer 🌐',
-    );
-  }
-
-  /// Port of BPB's Smart Fragment: the worker on 443 once per fragment length.
-  Future<XrayBuild> _buildSmartFragment(
-    ActiveWorker p,
-    List<Map<String, dynamic>> chain,
-  ) async {
-    final outbounds = <Map<String, dynamic>>[...chain];
-    for (var i = 0; i < smartLengths.length; i++) {
-      outbounds.add(
-        _wsOutbound(
-          'proxy-${i + 1}',
-          p.host,
-          443,
-          p.host,
-          true,
-          fragLength: smartLengths[i],
-        ),
-      );
-    }
-    final config = await _buildConfig(
-      outbounds: outbounds,
-      isBalancer: true,
-      outboundAddrs: const [],
-      domainToStaticIPs: p.host,
-    );
-    return XrayBuild(
-      config,
-      '${chain.isNotEmpty ? '🔗 ' : ''}Smart Fragment 🧠',
-    );
+      config);
   }
 
   Future<XrayBuild> _buildBestPing(
@@ -539,10 +495,11 @@ class XrayConfigBuilder {
         }
       }
     }
-    if (proxies.isEmpty)
+    if (proxies.isEmpty) {
       throw StateError(
         'No usable ports. Enable at least one TLS port in settings.',
       );
+    }
 
     final config = await _buildConfig(
       outbounds: [...chain, ...proxies],
@@ -552,34 +509,32 @@ class XrayConfigBuilder {
       outboundAddrs: allAddresses.toList(),
     );
     return XrayBuild(
-      config,
-      '${chain.isNotEmpty ? '🔗 ' : ''}Best Ping ${isFragment ? 'F ' : ''}🚀',
-    );
+      config);
   }
 
   WarpAccount _warpAccount() {
     final account = _warp.account;
-    if (account == null)
+    if (account == null) {
       throw StateError('No WARP account yet. Register it in Settings → WARP.');
+    }
     return account;
   }
 
   /// Port of BPB's getXrWarpConfigs, with the chain proxy (if set) dialed through WARP
   /// in place of BPB's WoW.
-  Future<XrayBuild> _buildWarp(bool isPro) async {
+  Future<XrayBuild> _buildWarp(bool obfuscation) async {
     final account = _warpAccount();
     final endpoints = _warpEndpoints();
-    if (endpoints.isEmpty)
+    if (endpoints.isEmpty) {
       throw StateError('Add at least one WARP endpoint in settings.');
-    final pro = isPro ? ' Pro' : '';
+    }
     final chain = _chainOutbounds();
-    final chainSign = chain.isNotEmpty ? '🔗 ' : '';
 
     final proxies = <Map<String, dynamic>>[];
     for (var i = 0; i < endpoints.length; i++) {
       proxies.add(
         _retag(
-          _warpOutbound(account, endpoints[i], isPro: isPro),
+          _warpOutbound(account, endpoints[i], obfuscation: obfuscation),
           'proxy-${i + 1}',
         ),
       );
@@ -590,44 +545,7 @@ class XrayConfigBuilder {
       isWarp: true,
       outboundAddrs: endpoints.map(_endpointHost).where(_isDomain).toList(),
     );
-    return XrayBuild(config, '${chainSign}WARP$pro Best Ping 🚀');
-  }
-
-  /// Smart Fragment's idea for WARP Pro: the first endpoint once per noise size, each
-  /// sending [_smartNoiseCount] random noise packets with the noise delay from settings.
-  Future<XrayBuild> _buildSmartObfuscation() async {
-    final account = _warpAccount();
-    final endpoints = _warpEndpoints();
-    if (endpoints.isEmpty)
-      throw StateError('Add at least one WARP endpoint in settings.');
-    final endpoint = endpoints.first;
-    final delay = profile.udpNoises.firstOrNull?.delay.xray ?? '1-5';
-    final chain = _chainOutbounds();
-
-    final proxies = <Map<String, dynamic>>[];
-    for (var i = 0; i < smartLengths.length; i++) {
-      final noises = [
-        for (var n = 0; n < _smartNoiseCount; n++)
-          {'rand': smartLengths[i], 'randRange': '0-255', 'delay': delay},
-      ];
-      proxies.add(
-        _retag(
-          _warpOutbound(account, endpoint, isPro: true, noises: noises),
-          'proxy-${i + 1}',
-        ),
-      );
-    }
-    final host = _endpointHost(endpoint);
-    final config = await _buildConfig(
-      outbounds: [...chain, ...proxies],
-      isBalancer: true,
-      isWarp: true,
-      outboundAddrs: [if (_isDomain(host)) host],
-    );
-    return XrayBuild(
-      config,
-      '${chain.isNotEmpty ? '🔗 ' : ''}WARP Pro Smart Obfuscation 🧠',
-    );
+    return XrayBuild(config);
   }
 
   /// MASQUE's endpoints (IPv6 ones dropped with IPv6 off), as WARP's.
@@ -643,42 +561,43 @@ class XrayConfigBuilder {
     return endpoints;
   }
 
-  /// Best Ping over every endpoint, like WARP's; Smart: the first endpoint once per fragment
-  /// length (H2) or noise size (H3, [_smartNoiseCount] noises each with MASQUE's noise
-  /// delay), like Worker's Smart Fragment and WARP's Smart Obfuscation.
+  /// Normal uses every endpoint. Fragment H2 applies configured fragments to every endpoint;
+  /// Obfuscation H3 uses the first endpoint once per preset noise size.
   Future<XrayBuild> _buildMasque(MasqueVariant variant) async {
     final account = _masque.account;
-    if (account == null)
+    if (account == null) {
       throw StateError(
         'No MASQUE account yet. Register it in Settings → MASQUE.',
       );
+    }
     final endpoints = _masqueEndpoints();
     final chain = _chainOutbounds();
+    final h3 = _masque.transport == 'h3';
+    final obfuscation = variant == MasqueVariant.obfuscation;
 
     final proxies = <Map<String, dynamic>>[];
-    if (!variant.smart) {
+    if (!obfuscation) {
       for (final endpoint in endpoints) {
-        proxies.add(_masqueOutbound(account, endpoint, h3: variant.h3));
+        proxies.add(_masqueOutbound(account, endpoint, h3: h3));
+      }
+    } else if (!h3) {
+      for (final endpoint in endpoints) {
+        proxies.add(
+          _masqueOutbound(account, endpoint, h3: false, fragment: true),
+        );
       }
     } else {
       final delay = _masque.udpNoises.firstOrNull?.delay.xray ?? '1-5';
-      for (final length in smartLengths) {
+      for (final length in masqueNoiseSizes) {
         proxies.add(
-          variant.h3
-              ? _masqueOutbound(
+          _masqueOutbound(
                   account,
                   endpoints.first,
                   h3: true,
                   noises: [
-                    for (var n = 0; n < _smartNoiseCount; n++)
+                    for (var n = 0; n < _masqueNoiseCount; n++)
                       {'rand': length, 'randRange': '0-255', 'delay': delay},
                   ],
-                )
-              : _masqueOutbound(
-                  account,
-                  endpoints.first,
-                  h3: false,
-                  fragLength: length,
                 ),
         );
       }
@@ -691,27 +610,22 @@ class XrayConfigBuilder {
       outbounds: [...chain, ...tagged],
       isBalancer: true,
       isWarp: true,
-      outboundAddrs: (variant.smart ? [endpoints.first] : endpoints)
+      outboundAddrs: (obfuscation && h3 ? [endpoints.first] : endpoints)
           .map(_endpointHost)
           .where(_isDomain)
           .toList(),
     );
-    final smart = variant.smart
-        ? (variant.h3 ? 'Smart Obfuscation 🧠' : 'Smart Fragment 🧠')
-        : 'Best Ping 🚀';
     return XrayBuild(
-      config,
-      '${chain.isNotEmpty ? '🔗 ' : ''}MASQUE ${variant.h3 ? 'H3' : 'H2'} $smart',
-    );
+      config);
   }
 
-  /// Xray's masque outbound with WARP's credentials: H2 is TLS over TCP (fragmented with
-  /// [fragLength]), H3 QUIC over UDP (with [noises]).
+  /// Xray's masque outbound with WARP's credentials: H2 is TLS over TCP (fragmented with the
+  /// configured MASQUE fragment settings), H3 QUIC over UDP (with [noises]).
   Map<String, dynamic> _masqueOutbound(
     MasqueAccount account,
     String endpoint, {
     required bool h3,
-    String? fragLength,
+    bool fragment = false,
     List<Map<String, dynamic>>? noises,
   }) {
     return {
@@ -735,12 +649,9 @@ class XrayConfigBuilder {
             'address': [account.ipv4, account.ipv6],
           },
         },
-        'finalmask': fragLength != null
+        'finalmask': fragment
             ? _finalMask(
-                fragment: true,
-                fragLength: fragLength,
-                fragments: _masque.fragments,
-              )
+                fragment: true, fragments: _masque.fragments)
             : noises != null
             ? _finalMask(
                 udpNoise: true,
@@ -772,7 +683,7 @@ class XrayConfigBuilder {
       isWorkerless: true,
       outboundAddrs: const [],
     );
-    return XrayBuild(config, 'Serverless 🌟');
+    return XrayBuild(config);
   }
 
   /// patterniha's config ([domainFrontingV23]) as is, with the app's TUN and mixed inbounds
@@ -806,7 +717,7 @@ class XrayConfigBuilder {
           (i) => (i['tag'] as String).startsWith('tls-decrypt-'),
         ),
       ];
-      return XrayBuild(config, 'Domain Fronting 🎭');
+      return XrayBuild(config);
     }
 
     final config = Map<String, dynamic>.of(v23)
@@ -827,7 +738,7 @@ class XrayConfigBuilder {
     config['log'] = {'loglevel': device.logLevel};
     (config['policy'] as Map<String, dynamic>)['system'] = _statsPolicy;
     config['stats'] = <String, dynamic>{};
-    return XrayBuild(config, 'Domain Fronting 🎭');
+    return XrayBuild(config);
   }
 
   /// v23's outbounds the exit's fronting uses (not its unused tls-repack-frommitm).
@@ -880,7 +791,7 @@ class XrayConfigBuilder {
       isBalancer: false,
       outboundAddrs: const [],
     );
-    return XrayBuild(config, 'Psiphon');
+    return XrayBuild(config);
   }
 
   // endregion
@@ -1219,10 +1130,11 @@ class XrayConfigBuilder {
         : const [];
 
     // v23's Fastly front (fastly.redirect's host), with the local DNS like v23.
-    if (_frontedExit)
+    if (_frontedExit) {
       bypassDomains.add(
         'full:${(_v23!['dns']['hosts'] as Map)['fastly.redirect']}',
       );
+    }
 
     if (bypassDomains.isNotEmpty) {
       servers.add(
@@ -1362,8 +1274,9 @@ class XrayConfigBuilder {
     add(ip: ['geoip:private'], outbound: 'direct');
     // BitTorrent direct, matched by Xray's sniffers (TCP and uTP, whatever destOverride is), and
     // before the UDP block so its UDP (uTP, DHT) goes direct too.
-    if (profile.routing.bypass.isOn('bittorrent'))
+    if (profile.routing.bypass.isOn('bittorrent')) {
       add(protocol: ['bittorrent'], outbound: 'direct');
+    }
 
     // The worker and Tor only carry TCP (the worker also DNS); refuse other UDP so apps fall
     // back to TCP fast. Psiphon carries UDP (over its udpgw), and the chain proxy is the exit
@@ -1401,8 +1314,9 @@ class XrayConfigBuilder {
           .map((g) => g.geosite),
       ...routing.bypass.domains.map((d) => 'domain:$d'),
     ];
-    if (bypassDomains.isNotEmpty)
+    if (bypassDomains.isNotEmpty) {
       add(domain: bypassDomains, outbound: 'direct');
+    }
 
     final bypassIps = [
       ...geo.where((g) => !g.isBlock && g.geoip != null).map((g) => g.geoip!),
@@ -1415,8 +1329,9 @@ class XrayConfigBuilder {
       ...geo.where((g) => g.dns == _GeoDns.antiSanction).map((g) => g.geosite),
       ...routing.sanctionBypass.domains.map((d) => 'domain:$d'),
     ];
-    if (_antiSanction && sanctionDomains.isNotEmpty)
+    if (_antiSanction && sanctionDomains.isNotEmpty) {
       add(domain: sanctionDomains, outbound: 'direct');
+    }
 
     // The catch-all only matches connections with an IP. One with just a domain (FakeDNS, the
     // local proxy's clients) that no domain rule took misses it, so IPIfNonMatch's second round
@@ -1512,9 +1427,8 @@ class XrayConfigBuilder {
     String address,
     int port,
     String domain,
-    bool isFragment, {
-    String? fragLength,
-  }) {
+    bool isFragment,
+  ) {
     final upstream = _upstream;
     final isTls =
         httpsPorts.contains(port) ||
@@ -1557,7 +1471,7 @@ class XrayConfigBuilder {
           domainStrategy: 'UseIP',
         ),
         if (isFragment)
-          'finalmask': _finalMask(fragment: true, fragLength: fragLength),
+          'finalmask': _finalMask(fragment: true),
       },
       'tag': tag,
     };
@@ -1579,7 +1493,7 @@ class XrayConfigBuilder {
   Map<String, dynamic> _warpOutbound(
     WarpAccount account,
     String endpoint, {
-    required bool isPro,
+    required bool obfuscation,
     List<Map<String, dynamic>>? noises,
   }) {
     return {
@@ -1599,7 +1513,7 @@ class XrayConfigBuilder {
             : const [0, 0, 0],
         'secretKey': account.privateKey,
       },
-      'streamSettings': isPro
+      'streamSettings': obfuscation
           ? {'finalmask': _finalMask(udpNoise: true, noises: noises)}
           : null,
       'tag': 'proxy',
@@ -1739,8 +1653,9 @@ class XrayConfigBuilder {
   Map<String, dynamic>? _chainOutbound() {
     if (_exit != ExitNode.chain) return null;
     final chain = chainFor(_mode, device, profile.chains);
-    if (chain == null)
+    if (chain == null) {
       throw StateError('Add a chain proxy in Settings → Chain proxies first.');
+    }
     final ProxyUri p;
     try {
       p = ProxyUri.parse(chain.link);
@@ -1902,15 +1817,12 @@ class XrayConfigBuilder {
       },
   };
 
-  /// [packets] replaces every fragment card's packets.
-  /// [fragLength] replaces every fragment card's lengths (Smart Fragment), [packets] their
-  /// packets; [noises] replaces the UDP noises from settings (Smart Obfuscation).
+  /// [packets] replaces every fragment card's packets; [noises] replaces UDP noises from settings.
   /// [fragments] / [noiseReset]: the profile's unless given (MASQUE and Serverless have their own).
   Map<String, dynamic>? _finalMask({
     bool fragment = false,
     bool udpNoise = false,
     String? packets,
-    String? fragLength,
     List<Fragment>? fragments,
     List<Map<String, dynamic>>? noises,
     Range? noiseReset,
@@ -1924,9 +1836,7 @@ class XrayConfigBuilder {
               'type': 'fragment',
               'settings': {
                 'packets': packets ?? f.packets.xray,
-                'lengths': fragLength != null
-                    ? [fragLength]
-                    : f.lengths.map((r) => r.xray).toList(),
+                'lengths': f.lengths.map((r) => r.xray).toList(),
                 'delays': f.delays.map((r) => r.xray).toList(),
                 if (f.maxSplit != null) 'maxSplit': f.maxSplit!.xray,
               },
@@ -2008,8 +1918,9 @@ class XrayConfigBuilder {
   static String _dnsHost(String dns) => dnsHostOf(dns);
 
   static dynamic _deepCopy(dynamic value) {
-    if (value is Map)
+    if (value is Map) {
       return {for (final e in value.entries) '${e.key}': _deepCopy(e.value)};
+    }
     if (value is List) return value.map(_deepCopy).toList();
     return value;
   }

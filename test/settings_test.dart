@@ -3,7 +3,8 @@ import 'package:bpb/services/xray_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  const vless = ChainProxy(id: 'a1', name: 'VLESS', link: 'vless://x@192.0.2.1:443#VLESS');
+  const vless = ChainProxy(id: 'a1', name: 'VLESS', link: 'vless://x@192.0.2.1:443#VLESS',
+  );
   const wg = ChainProxy(
     id: 'b2',
     name: 'WG',
@@ -11,20 +12,32 @@ void main() {
   );
 
   test('the chain proxy exit: per connection type, only with a chain proxy the type can carry', () {
-    const device = DeviceSettings(exitNodes: {'worker': ExitNode.chain, 'warp': ExitNode.chain});
+    const device = DeviceSettings(exitNodes: {'worker': ExitNode.chain, 'warp': ExitNode.chain},
+    );
     // No chain proxies: the worker is the exit.
-    expect(XrayConfigBuilder.exitFor(ConnectionMode.worker, device, const []), ExitNode.worker);
-    expect(XrayConfigBuilder.exitFor(ConnectionMode.worker, device, const [vless]), ExitNode.chain);
+    expect(XrayConfigBuilder.exitFor(ConnectionMode.worker, device, const []), ExitNode.worker,
+    );
+    expect(XrayConfigBuilder.exitFor(ConnectionMode.worker, device, const [vless]), ExitNode.chain,
+    );
     // WireGuard is UDP: the worker can't carry it, WARP can.
-    expect(XrayConfigBuilder.exitFor(ConnectionMode.worker, device, const [wg]), ExitNode.worker);
-    expect(XrayConfigBuilder.exitFor(ConnectionMode.warp, device, const [wg]), ExitNode.chain);
+    expect(XrayConfigBuilder.exitFor(ConnectionMode.worker, device, const [wg]), ExitNode.worker,
+    );
+    expect(XrayConfigBuilder.exitFor(ConnectionMode.warp, device, const [wg]), ExitNode.chain,
+    );
     // The exit chosen for another type doesn't apply.
-    expect(XrayConfigBuilder.exitFor(ConnectionMode.masque, device, const [vless]), ExitNode.worker);
+    expect(XrayConfigBuilder.exitFor(ConnectionMode.masque, device, const [vless]), ExitNode.worker,
+    );
     // The chain chosen for the type, else the first one it can carry.
     const chosen = DeviceSettings(exitChains: {'warp': 'b2'});
-    expect(XrayConfigBuilder.chainFor(ConnectionMode.warp, chosen, const [vless, wg]), wg);
-    expect(XrayConfigBuilder.chainFor(ConnectionMode.worker, chosen, const [wg, vless]), vless);
-    expect(XrayConfigBuilder.chainFor(ConnectionMode.masque, chosen, const [vless, wg]), vless);
+    expect(XrayConfigBuilder.chainFor(ConnectionMode.warp, chosen, const [vless, wg,
+      ]), wg,
+    );
+    expect(XrayConfigBuilder.chainFor(ConnectionMode.worker, chosen, const [wg, vless,
+      ]), vless,
+    );
+    expect(XrayConfigBuilder.chainFor(ConnectionMode.masque, chosen, const [vless, wg,
+      ]), vless,
+    );
     // Stored and read back; unknown exit nodes are dropped.
     final stored = DeviceSettings.fromJson(
       DeviceSettings.fromJson({
@@ -37,8 +50,10 @@ void main() {
     expect([stored.exitNodes, stored.exitChains], [
       {'warp': ExitNode.chain},
       {'warp': 'b2'},
-    ]);
-    expect([stored.exitNodeFor('warp'), stored.exitNodeFor('worker')], [ExitNode.chain, ExitNode.worker]);
+    ],
+    );
+    expect([stored.exitNodeFor('warp'), stored.exitNodeFor('worker')], [ExitNode.chain, ExitNode.worker],
+    );
   });
 
   test('chain proxies are saved and exported with their links', () {
@@ -53,26 +68,27 @@ void main() {
     expect(p.toExportJson()['chains'], [vless.toJson(), wg.toJson()]);
   });
 
-  test('Fragment and WARP Pro types become Worker and WARP variants', () {
+  test('legacy connection types become Worker and WARP variants', () {
     DeviceSettings device(Map<String, dynamic> connection) => DeviceSettings.fromJson({'connection': connection});
 
     final fragment = device({'type': 'fragment'});
-    expect([fragment.connectionType, fragment.workerVariant], ['worker', 'fastestObfuscated']);
-    final smart = device({'type': 'fragment', 'smartFragment': true});
-    expect([smart.connectionType, smart.workerVariant], ['worker', 'smart']);
-    final pro = device({'type': 'warpPro', 'smartObfuscation': true});
-    expect([pro.connectionType, pro.warpVariant, pro.workerVariant], ['warp', 'smart', 'fastest']);
-    final normal = device({'type': 'normal', 'smartFragment': true});
-    expect([normal.connectionType, normal.workerVariant], ['worker', 'fastest']);
-    expect(device({'type': 'warp', 'warpVariant': 'smart'}).warpVariant, 'smart');
-    expect(device({'type': 'normal', 'normalVariant': 'smart'}).workerVariant, 'smart');
+    expect([fragment.connectionType, fragment.workerVariant], ['worker', 'fastestObfuscated'],
+    );
+    final pro = device({'type': 'warpPro'});
+    expect([pro.connectionType, pro.warpVariant, pro.workerVariant], ['warp', 'fastestObfuscated', 'fastest'],
+    );
+    final normal = device({'type': 'normal'});
+    expect([normal.connectionType, normal.workerVariant], ['worker', 'fastest'],
+    );
+    expect(device({'type': 'warp', 'warpVariant': 'invalid'}).warpVariant, 'fastest');
   });
 
   test('stored sparse: only values that differ from the defaults', () {
     expect(const Profile().toSparseJson(), {'schemaVersion': 1});
     expect(const DeviceSettings().toSparseJson(), {'schemaVersion': 1});
 
-    final p = const Profile().updated('vless.ech.enabled', true).updated('warp.endpoints', ['162.159.192.1:500']);
+    final p = const Profile().updated('vless.ech.enabled', true).updated('warp.endpoints', ['162.159.192.1:500'],
+    );
     expect(p.toSparseJson(), {
       'schemaVersion': 1,
       'vless': {
@@ -87,11 +103,13 @@ void main() {
   });
 
   test('a changed default reaches profiles that never set the value', () {
-    final stored = const Profile().updated('vless.ports', [443, 8443]).toSparseJson();
+    final stored = const Profile().updated('vless.ports', [443, 8443,
+    ]).toSparseJson();
     expect(stored['vless'], {
       'ports': [443, 8443],
     });
-    expect((stored['vless'] as Map).containsKey('speedTestInterval'), isFalse); // so a new default applies
+    expect((stored['vless'] as Map).containsKey('speedTestInterval'), isFalse,
+    ); // so a new default applies
   });
 
   test('malformed or unknown values fall back to defaults', () {
@@ -117,9 +135,11 @@ void main() {
     expect(p.vless.ports, [443]);
     expect(p.vless.speedTestInterval, 30);
     expect(p.vless.ech.serverName, isNull);
-    expect(p.fragments.single.packets, FragmentPackets.tlsHello); // not a preset → default
+    expect(p.fragments.single.packets, FragmentPackets.tlsHello,
+    ); // not a preset → default
     expect(p.fragments.single.lengths, const [Range(100, 200)]);
-    expect(p.routing.bypass.presets, {'iran': true, 'china': false, 'russia': false, 'bittorrent': false}); // unknown preset dropped
+    expect(p.routing.bypass.presets, {'iran': true, 'china': false, 'russia': false, 'bittorrent': false,
+    }); // unknown preset dropped
   });
 
   test('noise payload field follows the type', () {
@@ -165,13 +185,15 @@ void main() {
       'publicKey': 'k',
       'ipv6': '2606:4700::1/128',
       'reserved': [1, 2, 3],
-    });
+    },
+    );
     final exported = p.toExportJson();
     expect(exported['vless'], {
       'cleanIps': ['1.1.1.1'],
     });
     expect(exported.containsKey('warp'), isFalse);
-    expect(p.updated('warp.remoteDns', '9.9.9.9').toExportJson()['warp'], {'remoteDns': '9.9.9.9'});
+    expect(p.updated('warp.remoteDns', '9.9.9.9').toExportJson()['warp'], {'remoteDns': '9.9.9.9',
+    });
   });
 
   test('Tor bridges: cleaned up, private (not exported) and kept on import / reset', () {
@@ -190,8 +212,10 @@ void main() {
 
   test('LAN login only with sharing on and both fields set', () {
     DeviceSettings lan(Map<String, dynamic> v) => DeviceSettings.fromJson({'lanSharing': v});
-    expect(lan({'enabled': true, 'username': 'me', 'password': 'x'}).lanAuth, (user: 'me', pass: 'x'));
-    expect(lan({'enabled': false, 'username': 'me', 'password': 'x'}).lanAuth, isNull);
+    expect(lan({'enabled': true, 'username': 'me', 'password': 'x'}).lanAuth, (user: 'me', pass: 'x',
+    ));
+    expect(lan({'enabled': false, 'username': 'me', 'password': 'x'}).lanAuth, isNull,
+    );
     expect(lan({'enabled': true, 'username': 'me'}).lanAuth, isNull);
   });
 
