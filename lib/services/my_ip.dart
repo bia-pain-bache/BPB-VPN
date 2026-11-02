@@ -34,45 +34,36 @@ Future<MyIps> fetchMyIps({required int proxyPort}) async {
     }
   }
 
-  // String? validIp(String? s) =>
-  //     s != null && InternetAddress.tryParse(s.trim()) != null ? s.trim() : null;
-
-  Future<IpInfo?> cloudflareTargets() async {
-    // api.ip.sb is hosted on Cloudflare: the worker connects to it through its proxy IP.
-    final body = await get('https://api-ipv4.ip.sb/geoip&nocache=$nocache');
-    if (body == null) return null;
-
-    try {
-      final data = jsonDecode(body) as Map<String, dynamic>;
-      return (
-        ip: data['ip'] as String,
-        country: data['continent_code'] as String,
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<IpInfo?> otherTargets() async {
-    // ip-api is not on Cloudflare: the worker connects to it directly.
+  Future<IpInfo?> ipApi({String? ip}) async {
+    final path = ip == null ? '/json/' : '/json/$ip';
     final body = await get(
-      'http://ip-api.com/json/?fields=query,countryCode&nocache=$nocache',
+      Uri.http('ip-api.com', path, {
+        'fields': 'query,countryCode',
+        'nocache': '$nocache',
+      }).toString(),
     );
     if (body == null) return null;
 
     try {
       final data = jsonDecode(body) as Map<String, dynamic>;
-      return (
-        ip: data['query'] as String,
-        country: data['countryCode'] as String,
-      );
+      final query = data['query'] as String?;
+      if (query == null || InternetAddress.tryParse(query) == null) return null;
+      return (ip: query, country: data['countryCode'] as String?);
     } catch (_) {
       return null;
     }
   }
 
+  Future<IpInfo?> cloudflareTargets() async {
+    // icanhazip is reached through the Cloudflare worker's proxy IP.
+    final body = await get('https://icanhazip.com');
+    final ip = body?.trim();
+    if (ip == null || InternetAddress.tryParse(ip) == null) return null;
+    return ipApi(ip: ip);
+  }
+
   try {
-    final results = await Future.wait([cloudflareTargets(), otherTargets()]);
+    final results = await Future.wait([cloudflareTargets(), ipApi()]);
     return MyIps(cloudflare: results[0], other: results[1]);
   } finally {
     client.close();
