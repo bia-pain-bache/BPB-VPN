@@ -1657,6 +1657,7 @@ class XrayConfigBuilder {
         if (s.trim().isNotEmpty) s.trim(),
     ];
     final reserved = list(p['reserved']).map(int.tryParse).nonNulls.toList();
+    final allowedIPs = list(p['allowedips']);
     final dns = list(p['dns'])
         .where((ip) => InternetAddress.tryParse(ip) != null)
         .toList();
@@ -1672,6 +1673,7 @@ class XrayConfigBuilder {
             'endpoint':
                 '${p.server.contains(':') ? '[${p.server}]' : p.server}:${p.port}',
             'keepAlive': ?int.tryParse(p['keepalive'] ?? ''),
+            if (allowedIPs.isNotEmpty) 'allowedIPs': allowedIPs,
           },
         ],
         // Only the config's own: without one, Xray's default.

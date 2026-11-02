@@ -68,6 +68,7 @@ MTU = 1380
 PublicKey = cHVibGlja2V5cHVibGlja2V5cHVibGlja2V5cHViMDE+
 PresharedKey = cHJlc2hhcmVka2V5cHJlc2hhcmVka2V5cHJlc2hhcjE=
 Endpoint = vpn.example.com:51820
+AllowedIPs = 0.0.0.0/0, ::/0
 PersistentKeepalive = 25
 ''';
 

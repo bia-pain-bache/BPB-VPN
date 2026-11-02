@@ -25,7 +25,8 @@ class ChainInfo {
   bool get isUdp => isWireGuard || uri.protocol == 'hysteria2';
 
   /// `host:port` (an IPv6 host in brackets).
-  String get address => '${uri.server.contains(':') ? '[${uri.server}]' : uri.server}:${uri.port}';
+  String get address =>
+      '${uri.server.contains(':') ? '[${uri.server}]' : uri.server}:${uri.port}';
 
   String get protocol => switch (uri.protocol) {
     'vless' => 'VLESS',
@@ -67,11 +68,13 @@ class ChainInfo {
   List<String> get tags => [protocol, ?transport, ?security];
 
   /// What it carries: everything but HTTP proxies also relays UDP.
-  List<String> get carries => uri.protocol == 'http' ? const ['TCP'] : const ['TCP', 'UDP'];
+  List<String> get carries =>
+      uri.protocol == 'http' ? const ['TCP'] : const ['TCP', 'UDP'];
 
   /// Whether a [mode] connection can carry it: WireGuard and Hysteria2 are UDP, which only WARP
   /// and MASQUE carry (the worker relays TCP only).
-  bool canChainOver(ConnectionMode mode) => !isUdp || mode == ConnectionMode.warp || mode == ConnectionMode.masque;
+  bool canChainOver(ConnectionMode mode) =>
+      !isUdp || mode == ConnectionMode.warp || mode == ConnectionMode.masque;
 }
 
 /// A new chain proxy's id.
@@ -84,7 +87,9 @@ String newChainId() {
 /// or a WireGuard config (`[Interface]` / `[Peer]`), named [fileName] without its extension when
 /// it comes from a file. Throws [FormatException] if none is found.
 List<ChainProxy> parseChainProxies(String text, {String? fileName}) {
-  if (text.contains('[Interface]')) return [wireGuardConfToChain(text, name: fileName)];
+  if (text.contains('[Interface]')) {
+    return [wireGuardConfToChain(text, name: fileName)];
+  }
   final proxies = <ChainProxy>[];
   for (final line in text.split(RegExp(r'\s+'))) {
     if (!line.contains('://')) continue;
@@ -93,7 +98,11 @@ List<ChainProxy> parseChainProxies(String text, {String? fileName}) {
     final name = info.uri.remark.isNotEmpty ? info.uri.remark : info.address;
     proxies.add(ChainProxy(id: newChainId(), name: name, link: line.trim()));
   }
-  if (proxies.isEmpty) throw const FormatException('No supported proxy link or WireGuard config found');
+  if (proxies.isEmpty) {
+    throw const FormatException(
+      'No supported proxy link or WireGuard config found',
+    );
+  }
   return proxies;
 }
 
@@ -114,22 +123,31 @@ ChainProxy wireGuardConfToChain(String conf, {String? name}) {
       section = ++peers == 1 ? peer : null; // Only the first peer.
     } else if (section != null && line.contains('=')) {
       final i = line.indexOf('=');
-      section[line.substring(0, i).trim().toLowerCase()] = line.substring(i + 1).trim();
+      section[line.substring(0, i).trim().toLowerCase()] = line
+          .substring(i + 1)
+          .trim();
     }
   }
   final privateKey = interface['privatekey'];
   final address = interface['address'];
   final publicKey = peer['publickey'];
   final endpoint = peer['endpoint'];
-  if (privateKey == null || address == null || publicKey == null || endpoint == null) {
-    throw const FormatException('Not a WireGuard config: PrivateKey, Address, PublicKey and Endpoint are needed');
+  if (privateKey == null ||
+      address == null ||
+      publicKey == null ||
+      endpoint == null) {
+    throw const FormatException(
+      'Not a WireGuard config: PrivateKey, Address, PublicKey and Endpoint are needed',
+    );
   }
   List<String> list(String? v) => [
     for (final s in (v ?? '').split(','))
       if (s.trim().isNotEmpty) s.trim(),
   ];
   final colon = endpoint.lastIndexOf(':');
-  if (colon <= 0) throw const FormatException('WireGuard Endpoint needs host:port');
+  if (colon <= 0) {
+    throw const FormatException('WireGuard Endpoint needs host:port');
+  }
   final host = endpoint.substring(0, colon).replaceAll(RegExp(r'^\[|\]$'), '');
   final baseName = name?.replaceFirst(RegExp(r'\.[^.]*$'), '').trim() ?? '';
   final label = baseName.isEmpty ? host : baseName;
@@ -139,8 +157,11 @@ ChainProxy wireGuardConfToChain(String conf, {String? name}) {
     'mtu': ?interface['mtu'],
     'presharedkey': ?peer['presharedkey'],
     'keepalive': ?peer['persistentkeepalive'],
+    if (list(peer['allowedips']).isNotEmpty)
+      'allowedips': list(peer['allowedips']).join(','),
     // Xray's remoteDNS takes IPs only; search domains in DNS = are left out.
-    if (list(interface['dns']).where(_isIp).isNotEmpty) 'dns': list(interface['dns']).where(_isIp).join(','),
+    if (list(interface['dns']).where(_isIp).isNotEmpty)
+      'dns': list(interface['dns']).where(_isIp).join(','),
   };
   final link = Uri(
     scheme: 'wireguard',
