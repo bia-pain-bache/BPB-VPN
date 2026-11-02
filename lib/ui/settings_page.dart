@@ -97,7 +97,7 @@ class SettingsPage extends StatelessWidget {
               const TextPref(
                 'general.localDns',
                 'Local DNS',
-                icon: Symbols.dns_rounded,
+                icon: Symbols.home_rounded,
                 hint: 'IP, tcp://IP or localhost',
                 help:
                     'Resolves outbound domains and bypass routing rules. '
@@ -107,7 +107,7 @@ class SettingsPage extends StatelessWidget {
               const TextPref(
                 'general.antiSanctionDns',
                 'Anti-Sanction DNS',
-                icon: Symbols.dns_rounded,
+                icon: Symbols.account_circle_off_rounded,
                 help:
                     'Resolves the sanctioned domains so they work over a direct connection. '
                     'This only applies to Serverless, WARP and MASQUE connections when Exit node is set to Default. '
@@ -116,16 +116,16 @@ class SettingsPage extends StatelessWidget {
               ),
               const SwitchPref(
                 'general.enableFakeDns',
-                'Enable Fake DNS',
+                'Fake DNS',
                 icon: Symbols.dns_rounded,
                 subtitle: 'Faster but may not work with some apps',
               ),
               const SwitchPref(
                 'general.enableIpv6',
-                'Enable IPv6',
+                'IPv6 connection',
                 icon: Symbols.counter_6_rounded,
                 subtitle:
-                    'Enable IPv6 connection. Choose based on your ISP',
+                    'Enable it based on your ISP',
               ),
               const SwitchPref(
                 'device.lanSharing.enabled',
@@ -188,7 +188,7 @@ class SettingsPage extends StatelessWidget {
               const TextPref(
                 'vless.remoteDns.server',
                 'Remote DNS',
-                icon: Symbols.dns_rounded,
+                icon: Symbols.outbound_rounded,
                 help: 'Resolves foreign domains and can be a DoH or TCP DNS server.',
                 validator: validateRemoteDns,
               ),
@@ -324,7 +324,7 @@ class SettingsPage extends StatelessWidget {
               const TextPref(
                 'warp.remoteDns',
                 'Remote DNS',
-                icon: Symbols.dns_rounded,
+                icon: Symbols.outbound_rounded,
                 hint: '1.1.1.1',
                 help: 'It can be an IP (UDP DNS), tcp://host or https://host/dns-query.',
                 validator: validateTunnelDns,
@@ -375,7 +375,7 @@ class SettingsPage extends StatelessWidget {
               const TextPref(
                 'masque.remoteDns',
                 'Remote DNS',
-                icon: Symbols.dns_rounded,
+                icon: Symbols.outbound_rounded,
                 hint: '1.1.1.1',
                 help: 'It can be an IP (UDP DNS), tcp://host or https://host/dns-query.',
                 validator: validateTunnelDns,
@@ -1366,7 +1366,7 @@ class _GeoAssetsTileState extends State<_GeoAssetsTile> {
   Widget build(BuildContext context) {
     return ListTile(
       leading: const Icon(Symbols.update_rounded),
-      title: const Text('Update geo assets'),
+      title: const Text('Update Geo assets'),
       subtitle: const Text('Latest Chocolate4U assets'),
       trailing: _updating
           ? const SizedBox(
