@@ -56,7 +56,7 @@ Future<MyIps> fetchMyIps({required int proxyPort}) async {
 
   Future<IpInfo?> cloudflareTargets() async {
     // icanhazip is reached through the Cloudflare worker's proxy IP.
-    final body = await get('https://icanhazip.com');
+    final body = await get('https://ipv4.icanhazip.com');
     final ip = body?.trim();
     if (ip == null || InternetAddress.tryParse(ip) == null) return null;
     return ipApi(ip: ip);
