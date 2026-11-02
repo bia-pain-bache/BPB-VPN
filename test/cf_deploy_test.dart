@@ -65,7 +65,20 @@ void main() {
     final name = await CloudflareApi(token, client: client).freeName(acc, WorkerType.workers);
     expect(asked, hasLength(2));
     expect(name, asked.last);
-    expect(name, matches(RegExp(r'^[a-z][a-z0-9]{7,17}$')));
+    expect(name, matches(RegExp(r'^[a-z0-9]{8,18}$')));
+  });
+
+  test('a new Workers subdomain is a 10-character alphanumeric label', () async {
+    String? requested;
+    final client = MockClient((req) async {
+      if (req.method == 'GET') return notFound();
+      requested = (jsonDecode(req.body) as Map<String, dynamic>)['subdomain'] as String;
+      return ok({'subdomain': requested});
+    });
+
+    await CloudflareApi(token, client: client).ensureSubdomain(acc);
+
+    expect(requested, matches(RegExp(r'^[a-z0-9][a-z0-9]{9}$')));
   });
 
   test('Workers: one plain-text ENV binding, then the workers.dev route', () async {
@@ -79,8 +92,11 @@ void main() {
     });
     final env = CloudflareApi.encodeEnv(uuid: 'u-1', proxyIps: const [], fallbackUrl: 'https://example.com');
 
+    final dateBeforeDeploy = DateTime.now().toUtc().toIso8601String().substring(0, 10);
     final host = await CloudflareApi(token, client: client).deployWorker(acc, 'wk', env);
+    final dateAfterDeploy = DateTime.now().toUtc().toIso8601String().substring(0, 10);
     expect(host, 'wk.me.workers.dev');
+    expect([dateBeforeDeploy, dateAfterDeploy], contains(metadata['compatibility_date']));
     expect(metadata['bindings'], [
       {'type': 'plain_text', 'name': 'ENV', 'text': env},
     ]);
@@ -106,17 +122,22 @@ void main() {
       'ENV': {'type': 'plain_text', 'value': env},
     };
 
+    final createDateBeforeDeploy = DateTime.now().toUtc().toIso8601String().substring(0, 10);
     expect(await api.deployPages(acc, 'pg', env, create: true), 'pg-x1.pages.dev');
+    final createDateAfterDeploy = DateTime.now().toUtc().toIso8601String().substring(0, 10);
     final created = bodies['POST /accounts/$acc/pages/projects'] as Map;
     expect(created['name'], 'pg');
-    expect(created['deployment_configs']['production']['env_vars'], envVars);
+    final createdProduction = created['deployment_configs']['production'] as Map;
+    expect([createDateBeforeDeploy, createDateAfterDeploy], contains(createdProduction['compatibility_date']));
+    expect(createdProduction['env_vars'], envVars);
 
+    final updateDateBeforeDeploy = DateTime.now().toUtc().toIso8601String().substring(0, 10);
     expect(await api.deployPages(acc, 'pg', env, create: false), 'pg-x1.pages.dev');
-    expect(bodies['PATCH /accounts/$acc/pages/projects/pg'], {
-      'deployment_configs': {
-        'production': {'env_vars': envVars},
-      },
-    });
+    final updateDateAfterDeploy = DateTime.now().toUtc().toIso8601String().substring(0, 10);
+    final updated = bodies['PATCH /accounts/$acc/pages/projects/pg'] as Map;
+    final updateProduction = updated['deployment_configs']['production'] as Map;
+    expect([updateDateBeforeDeploy, updateDateAfterDeploy], contains(updateProduction['compatibility_date']));
+    expect(updateProduction['env_vars'], envVars);
     expect(calls.where((c) => c == 'POST /accounts/$acc/pages/projects/pg/deployments'), hasLength(2));
   });
 

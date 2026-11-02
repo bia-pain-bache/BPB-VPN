@@ -25,7 +25,6 @@ class CfAccount {
 /// like BPB-Wizard). Every change is a full deployment: the script with its one ENV binding.
 class CloudflareApi {
   static const _base = 'https://api.cloudflare.com/client/v4';
-  static const _compatibilityDate = '2025-09-01';
   static const workerAsset = 'worker/worker.min.js';
 
   /// The bundled worker's version, bumped with every change to worker/worker.js; deployments
@@ -54,7 +53,7 @@ class CloudflareApi {
       'permissionGroupKeys': permissions,
       'accountId': '*',
       'zoneId': 'all',
-      'name': 'VPN',
+      'name': 'BPB-VPN',
     }).toString();
   }
 
@@ -169,7 +168,7 @@ class CloudflareApi {
     final script = await rootBundle.loadString(workerAsset);
     final metadata = {
       'main_module': 'worker.js',
-      'compatibility_date': _compatibilityDate,
+      'compatibility_date': _currentCompatibilityDate(),
       'bindings': [
         {'type': 'plain_text', 'name': envVar, 'text': env},
       ],
@@ -389,7 +388,9 @@ class CloudflareApi {
   /// Deploys the Pages project [name] with [env]: creates it ([create]) or sets its ENV, then
   /// uploads a deployment (variables only apply to new ones). Returns its pages.dev host.
   Future<String> deployPages(String accountId, String name, String env, {required bool create}) async {
+    final compatibilityDate = _currentCompatibilityDate();
     final production = {
+      'compatibility_date': compatibilityDate,
       'env_vars': {
         envVar: {'type': 'plain_text', 'value': env},
       },
@@ -402,7 +403,7 @@ class CloudflareApi {
               'name': name,
               'production_branch': 'main',
               'deployment_configs': {
-                'production': {'compatibility_date': _compatibilityDate, ...production},
+                'production': production,
               },
             },
           )
@@ -416,6 +417,8 @@ class CloudflareApi {
     await uploadPagesDeployment(accountId, name);
     return '${(project as Map)['subdomain']}';
   }
+
+  static String _currentCompatibilityDate() => DateTime.now().toUtc().toIso8601String().substring(0, 10);
 
   Future<void> attachCustomDomain(ActiveWorker w, String hostname) => w.type == WorkerType.pages
       ? _attachPagesDomain(w.accountId, w.name, w.host, hostname)
@@ -484,12 +487,10 @@ class CloudflareApi {
 
 final _random = Random.secure();
 
-/// Random lowercase name that starts with a letter (valid for scripts, projects and subdomains).
+/// Random lowercase alphanumeric name.
 String _randomName(int length) {
-  const letters = 'abcdefghijklmnopqrstuvwxyz';
-  const chars = '${letters}0123456789';
-  return letters[_random.nextInt(letters.length)] +
-      List.generate(length - 1, (_) => chars[_random.nextInt(chars.length)]).join();
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  return List.generate(length, (_) => chars[_random.nextInt(chars.length)]).join();
 }
 
 String generateUuid() {
