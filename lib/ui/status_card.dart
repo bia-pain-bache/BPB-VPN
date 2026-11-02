@@ -286,8 +286,9 @@ class _Metric extends StatelessWidget {
         ),
       ],
     );
-    if (onTap == null)
+    if (onTap == null) {
       return Padding(padding: const EdgeInsets.only(right: 8), child: content);
+    }
     return Tooltip(
       message: tooltip,
       child: InkWell(

@@ -71,8 +71,9 @@ bool _isDoh(Uri? uri) =>
 /// path; the host a domain or IP (IPv6 in brackets), with an optional port.
 bool _isDnsUrl(String v, Set<String> schemes) {
   final uri = Uri.tryParse(v);
-  if (uri == null || !schemes.contains(uri.scheme) || uri.host.isEmpty)
+  if (uri == null || !schemes.contains(uri.scheme) || uri.host.isEmpty) {
     return false;
+  }
   if (!isDomain(uri.host) && !isIp(uri.host)) return false;
   if (uri.userInfo.isNotEmpty || uri.hasQuery || uri.hasFragment) return false;
   return uri.scheme == 'https'
@@ -126,8 +127,9 @@ String? validateHostPort(String v, {bool requirePort = false}) {
   if (match == null) return usage;
   final port = match.group(3);
   if (port == null && requirePort) return usage;
-  if (port != null && (int.parse(port) < 1 || int.parse(port) > 65535))
+  if (port != null && (int.parse(port) < 1 || int.parse(port) > 65535)) {
     return 'Invalid port';
+  }
   final ipv6 = match.group(1);
   if (ipv6 != null) {
     return InternetAddress.tryParse(ipv6)?.type == InternetAddressType.IPv6
@@ -164,17 +166,21 @@ const _cloudflareDns = {
 /// brackets), with an optional port; through the worker, so not Cloudflare's.
 String? validateRemoteDns(String v) {
   final uri = Uri.tryParse(v);
-  if (uri == null || uri.scheme.isEmpty || uri.host.isEmpty)
+  if (uri == null || uri.scheme.isEmpty || uri.host.isEmpty) {
     return 'Invalid DoH, Please enter a valid URL.';
-  if (!const {'tcp', 'https'}.contains(uri.scheme))
+  }
+  if (!const {'tcp', 'https'}.contains(uri.scheme)) {
     return 'It can be only TCP or DoH servers.';
-  if (!isDomain(uri.host) && !isIp(uri.host))
+  }
+  if (!isDomain(uri.host) && !isIp(uri.host)) {
     return 'The host should be a domain or IP.';
+  }
   if (uri.userInfo.isNotEmpty || uri.hasQuery || uri.hasFragment) {
     return 'Use https://host/dns-query or tcp://host.';
   }
-  if (uri.scheme == 'https' && !_isDoh(uri))
+  if (uri.scheme == 'https' && !_isDoh(uri)) {
     return 'DoH should be like https://dns.example/dns-query';
+  }
   if (uri.scheme != 'https' && uri.path.isNotEmpty && uri.path != '/') {
     return 'Use tcp://host, without a path.';
   }
@@ -396,8 +402,9 @@ class IntPref extends StatelessWidget {
           number: true,
           validator: (v) {
             final n = int.tryParse(v);
-            if (n == null || n < min || n > max)
+            if (n == null || n < min || n > max) {
               return 'Enter a number between $min and $max';
+            }
             return null;
           },
         );

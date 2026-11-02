@@ -124,8 +124,7 @@ class SettingsPage extends StatelessWidget {
                 'general.enableIpv6',
                 'IPv6 connection',
                 icon: Symbols.counter_6_rounded,
-                subtitle:
-                    'Enable it based on your ISP',
+                subtitle: 'Enable it based on your ISP',
               ),
               const SwitchPref(
                 'device.lanSharing.enabled',
@@ -396,12 +395,17 @@ class SettingsPage extends StatelessWidget {
                 hint: MasqueSettings.defaultSni,
                 validator: validateHost,
               ),
-              const ChoicePref(
-                'masque.transport',
-                'Transport',
-                {'h2': 'H2', 'h3': 'H3'},
-                icon: Symbols.swap_horiz_rounded,
-              ),
+              const ChoicePref('masque.transport', 'Transport', {
+                'h2': 'H2 · TCP',
+                'h3': 'H3 · QUIC',
+              }, icon: Symbols.swap_horiz_rounded),
+              if (p.masque.transport == 'h2')
+                const ChoicePref(
+                  'masque.tlsFingerprint',
+                  'H2 Fingerprint',
+                  fingerprints,
+                  icon: Symbols.fingerprint_rounded,
+                ),
               ListTile(
                 leading: const Icon(Symbols.view_week_rounded),
                 title: const Text('H2 TCP Fragments'),
@@ -887,8 +891,9 @@ class _MitmCaTileState extends State<_MitmCaTile> {
     setState(() => _busy = true);
     try {
       final saved = await state.installMitmCa();
-      if (saved != null)
+      if (saved != null) {
         messenger.showSnackBar(SnackBar(content: Text('Saved to $saved')));
+      }
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(content: Text('Could not install the certificate: $e')),
@@ -1400,8 +1405,9 @@ class _ExportSettingsTile extends StatelessWidget {
     try {
       if (download) {
         final where = await VpnChannel.saveFile(name: name, content: content);
-        if (where != null)
+        if (where != null) {
           messenger.showSnackBar(SnackBar(content: Text('Saved to $where')));
+        }
       } else {
         await VpnChannel.shareFile(
           name: name,

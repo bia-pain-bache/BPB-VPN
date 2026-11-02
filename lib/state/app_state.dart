@@ -199,7 +199,7 @@ class AppState extends ChangeNotifier {
       mode == ConnectionMode.serverless ||
       mode == ConnectionMode.tor;
 
-  /// The current type's variant (Worker and WARP; [ConnectionVariant.fastest] for the others).
+  /// The current type's variant (Worker and WARP; [ConnectionVariant.normal] for the others).
   ConnectionVariant get variant {
     final name = switch (mode) {
       ConnectionMode.worker => device.workerVariant,
@@ -207,7 +207,7 @@ class AppState extends ChangeNotifier {
       _ => null,
     };
     return ConnectionVariant.values.asNameMap()[name] ??
-        ConnectionVariant.fastest;
+        ConnectionVariant.normal;
   }
 
   /// Proxy mode: only the local SOCKS/HTTP proxy, no VPN.
@@ -239,8 +239,9 @@ class AppState extends ChangeNotifier {
   /// Creates Domain Fronting's CA on first use, then opens Android's CA install. Returns where
   /// bpb-cert.crt was saved (Android 11+), or null.
   Future<String?> installMitmCa() async {
-    if (!await VpnChannel.mitmCaExists())
+    if (!await VpnChannel.mitmCaExists()) {
       await VpnChannel.saveMitmCa(await Isolate.run(MitmCa.generate));
+    }
     return VpnChannel.installMitmCa();
   }
 
@@ -394,8 +395,9 @@ class AppState extends ChangeNotifier {
     _profile = null;
     _prefs.setString(_kProfile, jsonEncode(_stored.toSparseJson()));
     _markChangedWhileConnected();
-    if (jsonEncode(value.vless.toJson()) != jsonEncode(vless.toJson()))
+    if (jsonEncode(value.vless.toJson()) != jsonEncode(vless.toJson())) {
       _setVless(value.vless);
+    }
     notifyListeners();
   }
 
@@ -533,8 +535,9 @@ class AppState extends ChangeNotifier {
     status = VpnStatus.connecting;
     notifyListeners();
     try {
-      if (!await VpnChannel.prepare(vpn: !proxyMode))
+      if (!await VpnChannel.prepare(vpn: !proxyMode)) {
         throw StateError('VPN permission denied');
+      }
       // First WARP / MASQUE connection: register the account, which also gives its endpoints.
       final warp = profile.warp, masque = profile.masque;
       if (mode.isWarp && (warp.account == null || warp.endpoints.isEmpty)) {
@@ -894,8 +897,9 @@ class AppState extends ChangeNotifier {
   void _redeployDue() {
     for (final e in deployments) {
       final d = e.deployment;
-      if (d.pending || d.version < CloudflareApi.minWorkerVersion)
+      if (d.pending || d.version < CloudflareApi.minWorkerVersion) {
         unawaited(redeploy(e.account, d.type));
+      }
     }
   }
 
@@ -959,8 +963,9 @@ class AppState extends ChangeNotifier {
     final w = worker!;
     if (hostname == w.customDomain) return;
     await _cf(s.account.token, (api) async {
-      if (w.customDomain != null)
+      if (w.customDomain != null) {
         await api.detachCustomDomain(w, w.customDomain!);
+      }
       await api.attachCustomDomain(w, hostname);
     });
     _putDeployment(
@@ -1007,8 +1012,9 @@ class AppState extends ChangeNotifier {
     }
     try {
       final accounts = await api.accounts();
-      if (accounts.isEmpty)
+      if (accounts.isEmpty) {
         throw StateError('This token has no account access');
+      }
       return (
         token: api.token,
         email: await api.userEmail(),
@@ -1056,8 +1062,9 @@ class AppState extends ChangeNotifier {
     } on CloudflareException catch (e) {
       throw StateError(e.message);
     } catch (e) {
-      if (isNetworkError(e))
+      if (isNetworkError(e)) {
         throw NetworkStateError("Can't reach Cloudflare: $e");
+      }
       rethrow;
     } finally {
       api.close();
@@ -1149,16 +1156,19 @@ class AppState extends ChangeNotifier {
     SavedCfAccount account, {
     bool cleanUp = true,
   }) async {
-    if (selected?.account.id == account.id && status != VpnStatus.disconnected)
+    if (selected?.account.id == account.id &&
+        status != VpnStatus.disconnected) {
       await disconnect();
+    }
     if (cleanUp) {
       try {
         await _deleteDeployments(account);
       } on StateError {
         rethrow;
       } catch (e) {
-        if (isNetworkError(e))
+        if (isNetworkError(e)) {
           throw NetworkStateError("Can't reach Cloudflare: $e");
+        }
         rethrow;
       }
     }

@@ -10,6 +10,9 @@ import 'proxy_uri.dart';
 import 'public_dns.dart';
 import 'warp.dart';
 
+const _unsafeCipherSuites =
+    'TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256';
+
 /// How traffic reaches the internet.
 enum ConnectionMode {
   /// VLESS over WebSocket + TLS through the worker; see [ConnectionVariant].
@@ -47,31 +50,32 @@ enum ConnectionMode {
   bool get hasVariants => this == worker || this == warp;
 }
 
-/// Worker: Normal, Fragment or Browser Dialer. WARP: Normal or Obfuscation.
+/// Worker: Normal, Fragment or Browser Dialer. WARP: Normal or Obfuscated.
 enum ConnectionVariant {
-  fastest,
-  fastestObfuscated,
+  normal,
+  fragment,
+  obfuscated,
   browserDialer;
-
-  bool get obfuscated => this == fastestObfuscated;
 
   /// The variants [mode] offers.
   static List<ConnectionVariant> of(ConnectionMode mode) =>
       mode == ConnectionMode.worker
-      ? const [fastest, fastestObfuscated, browserDialer]
-      : const [fastest, fastestObfuscated];
+      ? const [normal, fragment, browserDialer]
+      : const [normal, obfuscated];
 
   String label(ConnectionMode mode) {
     if (mode == ConnectionMode.worker) {
       return switch (this) {
-        fastest => 'Normal',
-        fastestObfuscated => 'Fragment',
+        normal => 'Normal',
+        fragment => 'Fragment',
         browserDialer => 'Browser Dialer',
+        obfuscated => 'Obfuscated',
       };
     }
     return switch (this) {
-      fastest => 'Normal',
-      fastestObfuscated => 'Obfuscation',
+      normal => 'Normal',
+      obfuscated => 'Obfuscated',
+      fragment => 'Fragment',
       browserDialer => 'Browser Dialer',
     };
   }
@@ -79,11 +83,12 @@ enum ConnectionVariant {
 
 /// MASQUE's home-page mode. Transport is chosen in MASQUE settings.
 enum MasqueVariant {
-  normal, obfuscation;
+  normal,
+  obfuscated;
 
   String label(bool h3) => switch (this) {
     normal => 'Normal',
-    obfuscation => h3 ? 'Obfuscation' : 'Fragment',
+    obfuscated => h3 ? 'Obfuscated' : 'Fragment',
   };
 }
 
@@ -130,33 +135,6 @@ class XrayConfigBuilder {
   /// The exit process's DNS server, the remote DNS of the Psiphon / Tor types: Tor's DNSPort,
   /// or Psiphon's own resolver (psiphon/dns.go).
   static const exitDnsPort = 10830;
-
-  /// MASQUE H3 obfuscation creates one outbound per size and lets Best Ping choose the fastest.
-  static const masqueNoiseSizes = [
-    '1-5',
-    '1-10',
-    '10-20',
-    '20-30',
-    '30-40',
-    '40-50',
-    '50-60',
-    '60-70',
-    '70-80',
-    '80-90',
-    '90-100',
-    '10-30',
-    '20-40',
-    '30-50',
-    '40-60',
-    '50-70',
-    '60-80',
-    '70-90',
-    '80-100',
-    '100-200',
-  ];
-
-  /// Noise packets per MASQUE H3 obfuscation outbound.
-  static const _masqueNoiseCount = 5;
 
   final Profile profile;
   final DeviceSettings device;
@@ -373,7 +351,7 @@ class XrayConfigBuilder {
   /// [variant] picks Worker's and WARP's config.
   Future<XrayBuild> build(
     ConnectionMode mode, {
-    ConnectionVariant variant = ConnectionVariant.fastest,
+    ConnectionVariant variant = ConnectionVariant.normal,
   }) {
     _exit = exitFor(mode, device, profile.chains);
     _mode = mode;
@@ -402,13 +380,15 @@ class XrayConfigBuilder {
     if (mode == ConnectionMode.masque) {
       return _buildMasque(masqueVariantOf(device));
     }
-    if (mode.isWarp) return _buildWarp(variant.obfuscated);
+    if (mode.isWarp) {
+      return _buildWarp(variant == ConnectionVariant.obfuscated);
+    }
 
     final p = worker;
     if (p == null || uuid == null) {
       throw StateError('Deploy or select a worker first');
     }
-    final isFragment = variant.obfuscated;
+    final isFragment = variant == ConnectionVariant.fragment;
     final chain = _chainOutbounds();
 
     if (variant == ConnectionVariant.browserDialer) {
@@ -455,8 +435,7 @@ class XrayConfigBuilder {
       isBalancer: false,
       outboundAddrs: const [],
     );
-    return XrayBuild(
-      config);
+    return XrayBuild(config);
   }
 
   Future<XrayBuild> _buildBestPing(
@@ -508,8 +487,7 @@ class XrayConfigBuilder {
       balancerFallback: proxies.length > 1 ? 'proxy-2' : 'proxy-1',
       outboundAddrs: allAddresses.toList(),
     );
-    return XrayBuild(
-      config);
+    return XrayBuild(config);
   }
 
   WarpAccount _warpAccount() {
@@ -561,8 +539,8 @@ class XrayConfigBuilder {
     return endpoints;
   }
 
-  /// Normal uses every endpoint. Fragment H2 applies configured fragments to every endpoint;
-  /// Obfuscation H3 uses the first endpoint once per preset noise size.
+  /// Normal and obfuscation use every endpoint; obfuscation applies the configured H2 fragments
+  /// or H3 noises.
   Future<XrayBuild> _buildMasque(MasqueVariant variant) async {
     final account = _masque.account;
     if (account == null) {
@@ -573,7 +551,7 @@ class XrayConfigBuilder {
     final endpoints = _masqueEndpoints();
     final chain = _chainOutbounds();
     final h3 = _masque.transport == 'h3';
-    final obfuscation = variant == MasqueVariant.obfuscation;
+    final obfuscation = variant == MasqueVariant.obfuscated;
 
     final proxies = <Map<String, dynamic>>[];
     if (!obfuscation) {
@@ -587,18 +565,14 @@ class XrayConfigBuilder {
         );
       }
     } else {
-      final delay = _masque.udpNoises.firstOrNull?.delay.xray ?? '1-5';
-      for (final length in masqueNoiseSizes) {
+      for (final endpoint in endpoints) {
         proxies.add(
           _masqueOutbound(
-                  account,
-                  endpoints.first,
-                  h3: true,
-                  noises: [
-                    for (var n = 0; n < _masqueNoiseCount; n++)
-                      {'rand': length, 'randRange': '0-255', 'delay': delay},
-                  ],
-                ),
+            account,
+            endpoint,
+            h3: true,
+            noises: _udpNoises(_masque.udpNoises),
+          ),
         );
       }
     }
@@ -610,13 +584,9 @@ class XrayConfigBuilder {
       outbounds: [...chain, ...tagged],
       isBalancer: true,
       isWarp: true,
-      outboundAddrs: (obfuscation && h3 ? [endpoints.first] : endpoints)
-          .map(_endpointHost)
-          .where(_isDomain)
-          .toList(),
+      outboundAddrs: endpoints.map(_endpointHost).where(_isDomain).toList(),
     );
-    return XrayBuild(
-      config);
+    return XrayBuild(config);
   }
 
   /// Xray's masque outbound with WARP's credentials: H2 is TLS over TCP (fragmented with the
@@ -640,7 +610,9 @@ class XrayConfigBuilder {
         'tlsSettings': {
           'serverName': _masque.sni,
           'alpn': [h3 ? 'h3' : 'h2'],
-          if (!h3) 'fingerprint': 'chrome',
+          if (!h3) 'fingerprint': _masque.tlsFingerprint,
+          if (!h3 && _masque.tlsFingerprint == 'unsafe')
+            'cipherSuites': _unsafeCipherSuites,
         },
         'masqueSettings': {
           'warp': {
@@ -650,8 +622,7 @@ class XrayConfigBuilder {
           },
         },
         'finalmask': fragment
-            ? _finalMask(
-                fragment: true, fragments: _masque.fragments)
+            ? _finalMask(fragment: true, fragments: _masque.fragments)
             : noises != null
             ? _finalMask(
                 udpNoise: true,
@@ -1439,8 +1410,6 @@ class XrayConfigBuilder {
     final sni = isCustomCdn ? (cdn.sni ?? domain) : _randomUpperCase(domain);
     final enableEch = _vless.ech.enabled && !isFragment;
     final unsafeFingerprint = _vless.tlsFingerprint == 'unsafe';
-    final unsafeCipherSuites =
-        'TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256';
 
     return {
       'protocol': 'vless',
@@ -1460,7 +1429,7 @@ class XrayConfigBuilder {
             'serverName': sni,
             'fingerprint': _vless.tlsFingerprint,
             'alpn': ['http/1.1'],
-            if (unsafeFingerprint) 'cipherSuites': unsafeCipherSuites,
+            if (unsafeFingerprint) 'cipherSuites': _unsafeCipherSuites,
             if (enableEch) 'echConfigList': _echConfigList(_vless.ech),
             // Fetch the ECH config directly, not through the tunnel being set up.
             if (enableEch) 'echSockopt': {'dialerProxy': 'direct'},
@@ -1470,8 +1439,7 @@ class XrayConfigBuilder {
           tcpFastOpen: _vless.enableTcpFastOpen,
           domainStrategy: 'UseIP',
         ),
-        if (isFragment)
-          'finalmask': _finalMask(fragment: true),
+        if (isFragment) 'finalmask': _finalMask(fragment: true),
       },
       'tag': tag,
     };
@@ -1612,11 +1580,7 @@ class XrayConfigBuilder {
       'protocol': 'freedom',
       'streamSettings': {
         'sockopt': isFragment
-            ? _sockopt(
-                happyEyeballs: true,
-                tcpFastOpen: _vless.enableTcpFastOpen,
-                domainStrategy: 'UseIP',
-              )
+            ? _sockopt(happyEyeballs: true, domainStrategy: 'UseIP')
             : _sockopt(
                 domainStrategy: _general.enableIpv6 ? 'UseIPv4v6' : 'UseIPv4',
               ),

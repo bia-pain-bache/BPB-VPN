@@ -524,13 +524,14 @@ class MasqueSettings {
 
   /// The TLS server name sent to the MASQUE endpoints.
   final String sni;
+  final String tlsFingerprint;
   final List<String> endpoints;
   final int speedTestInterval;
 
-  /// MASQUE H2 fragments' packets and delays (the lengths are selected by the mode).
+  /// MASQUE H2 fragment settings.
   final List<Fragment> fragments;
 
-  /// MASQUE H3 noise delay and reset interval (the sizes are selected by the mode).
+  /// MASQUE H3 UDP noise settings and reset interval.
   final List<UdpNoise> udpNoises;
   final Range udpNoiseReset;
 
@@ -543,6 +544,7 @@ class MasqueSettings {
     this.transport = 'h2',
     this.remoteDns = '1.1.1.1',
     this.sni = defaultSni,
+    this.tlsFingerprint = 'chrome',
     // Set from the account's enrollment (see AppState.renewMasqueAccount).
     this.endpoints = const [],
     this.speedTestInterval = 30,
@@ -559,6 +561,7 @@ class MasqueSettings {
       transport: j['transport'] == 'h3' ? 'h3' : d.transport,
       remoteDns: _str(j['remoteDns'], d.remoteDns),
       sni: _str(j['sni'], d.sni),
+      tlsFingerprint: _str(j['tlsFingerprint'], d.tlsFingerprint),
       endpoints: _strList(j['endpoints'], d.endpoints),
       speedTestInterval: _int(j['speedTestInterval'], d.speedTestInterval),
       fragments: j['fragments'] is List
@@ -576,6 +579,7 @@ class MasqueSettings {
     'transport': transport,
     'remoteDns': remoteDns,
     'sni': sni,
+    'tlsFingerprint': tlsFingerprint,
     'endpoints': endpoints,
     'speedTestInterval': speedTestInterval,
     'fragments': fragments.map((f) => f.toJson()).toList(),
@@ -902,7 +906,7 @@ class DeviceSettings {
   final String workerVariant;
   final String warpVariant;
 
-  /// MASQUE's normal / obfuscation mode.
+  /// MASQUE's normal / obfuscated variant (Fragment with H2).
   final String masqueVariant;
 
   /// Serverless's ServerlessMode name.
@@ -918,7 +922,7 @@ class DeviceSettings {
   /// The chain proxy (a ChainProxy id) each connection type exits through.
   final Map<String, String> exitChains;
 
-  /// Psiphon / Tor exit region (an [exitRegions] key), or empty for the fastest (any region).
+  /// Psiphon / Tor exit region (an [exitRegions] key), or empty for any region.
   final String exitRegion;
 
   final String themeColor;
@@ -940,8 +944,8 @@ class DeviceSettings {
     this.lanUsername,
     this.lanPassword,
     this.connectionType = 'worker',
-    this.workerVariant = 'fastest',
-    this.warpVariant = 'fastest',
+    this.workerVariant = 'normal',
+    this.warpVariant = 'normal',
     this.masqueVariant = 'normal',
     this.serverlessMode = 'fragment',
     this.torBridge = 'snowflake',
@@ -966,9 +970,8 @@ class DeviceSettings {
     final bridge = _str(connection['torBridge'], d.torBridge);
     // Older connection types that had a separate Fragment or WARP Pro mode.
     final type = _str(connection['type'], d.connectionType);
-    String legacyVariant(String obfuscatedType) => type != obfuscatedType
-        ? 'fastest'
-        : 'fastestObfuscated';
+    String legacyVariant(String obfuscatedType, String obfuscatedVariant) =>
+        type != obfuscatedType ? 'normal' : obfuscatedVariant;
     return DeviceSettings(
       appMode: AppMode.values.asNameMap()[j['appMode']] ?? d.appMode,
       logLevel: _str(j['logLevel'], d.logLevel),
@@ -986,19 +989,19 @@ class DeviceSettings {
       workerVariant: _choice(
         _str(
           connection['workerVariant'],
-          _str(connection['normalVariant'], legacyVariant('fragment')),
+          legacyVariant('fragment', 'fragment'),
         ),
-        const {'fastest', 'fastestObfuscated', 'browserDialer'},
+        const {'normal', 'fragment', 'browserDialer'},
         d.workerVariant,
       ),
       warpVariant: _choice(
-        _str(connection['warpVariant'], legacyVariant('warpPro')),
-        const {'fastest', 'fastestObfuscated'},
+        _str(connection['warpVariant'], legacyVariant('warpPro', 'obfuscated')),
+        const {'normal', 'obfuscated'},
         d.warpVariant,
       ),
       masqueVariant: _choice(
         connection['masqueVariant'],
-        const {'normal', 'obfuscation'},
+        const {'normal', 'obfuscated'},
         d.masqueVariant,
       ),
       serverlessMode: _str(connection['serverlessMode'], d.serverlessMode),
