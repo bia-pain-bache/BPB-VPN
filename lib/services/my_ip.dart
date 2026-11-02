@@ -25,41 +25,54 @@ Future<MyIps> fetchMyIps({required int proxyPort}) async {
 
   Future<String?> get(String url) async {
     try {
-      final res = await client.get(Uri.parse(url)).timeout(const Duration(seconds: 20));
+      final res = await client
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 20));
       return res.statusCode == 200 ? res.body : null;
     } catch (_) {
       return null;
     }
   }
 
-  String? validIp(String? s) => s != null && InternetAddress.tryParse(s.trim()) != null ? s.trim() : null;
+  // String? validIp(String? s) =>
+  //     s != null && InternetAddress.tryParse(s.trim()) != null ? s.trim() : null;
 
-  // ip-api's free tier is HTTP only; [ip] empty means "the caller's IP".
-  Future<IpInfo?> ipApi(String ip) async {
-    final body = await get('http://ip-api.com/json/$ip?fields=query,countryCode&nocache=$nocache');
+  Future<IpInfo?> cloudflareTargets() async {
+    // api.ip.sb is hosted on Cloudflare: the worker connects to it through its proxy IP.
+    final body = await get('https://api-ipv4.ip.sb/geoip&nocache=$nocache');
     if (body == null) return null;
+
     try {
-      final j = jsonDecode(body) as Map<String, dynamic>;
-      final found = validIp(j['query'] as String?);
-      if (found == null) return null;
-      final cc = j['countryCode'] as String?;
-      return (ip: found, country: cc != null && cc.length == 2 ? cc : null);
+      final data = jsonDecode(body) as Map<String, dynamic>;
+      return (
+        ip: data['ip'] as String,
+        country: data['continent_code'] as String,
+      );
     } catch (_) {
       return null;
     }
   }
 
-  // icanhazip is behind Cloudflare: the worker reaches it via the proxy IP.
-  Future<IpInfo?> cloudflare() async {
-    final ip = validIp(await get('https://ipv4.icanhazip.com/?nocache=$nocache'));
-    if (ip == null) return null;
-    final info = await ipApi(ip);
-    return (ip: ip, country: info?.country);
+  Future<IpInfo?> otherTargets() async {
+    // ip-api is not on Cloudflare: the worker connects to it directly.
+    final body = await get(
+      'http://ip-api.com/json/?fields=query,countryCode&nocache=$nocache',
+    );
+    if (body == null) return null;
+
+    try {
+      final data = jsonDecode(body) as Map<String, dynamic>;
+      return (
+        ip: data['query'] as String,
+        country: data['countryCode'] as String,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   try {
-    // ip-api is not on Cloudflare: the worker connects to it directly.
-    final results = await Future.wait([cloudflare(), ipApi('')]);
+    final results = await Future.wait([cloudflareTargets(), otherTargets()]);
     return MyIps(cloudflare: results[0], other: results[1]);
   } finally {
     client.close();
@@ -67,7 +80,9 @@ Future<MyIps> fetchMyIps({required int proxyPort}) async {
 }
 
 /// "DE" → 🇩🇪 (regional indicator symbols).
-String countryFlag(String code) => String.fromCharCodes(code.toUpperCase().codeUnits.map((c) => 0x1F1E6 + c - 0x41));
+String countryFlag(String code) => String.fromCharCodes(
+  code.toUpperCase().codeUnits.map((c) => 0x1F1E6 + c - 0x41),
+);
 
 /// HTTP client that goes through the tunnel when [proxyPort] is set.
 http.Client proxiedClient(int? proxyPort) {
@@ -83,12 +98,18 @@ Future<String?> lanIPv4() async {
   int? rank(String name) => switch (name) {
     _ when name.startsWith('wlan') => 0, // Wi-Fi
     _ when name.startsWith('swlan') || name.startsWith('ap') => 1, // hotspot
-    _ when name.startsWith('rndis') || name.startsWith('usb') || name.startsWith('eth') => 2, // tethering
+    _
+        when name.startsWith('rndis') ||
+            name.startsWith('usb') ||
+            name.startsWith('eth') =>
+      2, // tethering
     _ => null,
   };
   try {
     final found = <(int, String)>[
-      for (final i in await NetworkInterface.list(type: InternetAddressType.IPv4))
+      for (final i in await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+      ))
         if (rank(i.name) case final r?)
           for (final a in i.addresses)
             if (!a.isLoopback && !a.isLinkLocal) (r, a.address),
