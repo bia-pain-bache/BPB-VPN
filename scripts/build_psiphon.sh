@@ -29,6 +29,5 @@ build() { # abi goarch clang-target [goarm]
 build arm64-v8a arm64 aarch64-linux-android
 build armeabi-v7a arm armv7a-linux-androideabi 7
 build x86_64 amd64 x86_64-linux-android
-build x86 386 i686-linux-android
 go version
 ls -la "$OUT"/*/libpsiphon.so
