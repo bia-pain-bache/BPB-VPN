@@ -54,7 +54,6 @@ jobs:
           channel: stable
           cache: true
 
-      # What isn't in the repository, with the same scripts as locally (see README → Build).
       - name: Psiphon exit (built from source with the NDK)
         env:
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
@@ -74,7 +73,7 @@ jobs:
       - name: Tor bridges for the setup wizard (fresh each build)
         run: bash scripts/fetch_tor_bridges.sh
 
-      - name: Minified worker (the app's asset)
+      - name: Minified worker
         working-directory: worker
         run: |
           npm install --no-package-lock --no-audit --no-fund

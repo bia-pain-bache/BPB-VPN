@@ -35,10 +35,10 @@ class CloudflareApi {
   /// The worker's only binding (plain text): base64 of a JSON object, see [encodeEnv].
   static const envVar = 'ENV';
 
-  /// ENV's value: `{V, UUID, PROXY_IPS, FALLBACK_URL}` as JSON, base64.
+  /// ENV's value: `{v, id, pips, fb}` as JSON, base64.
   static String encodeEnv({required String uuid, required List<String> proxyIps, required String fallbackUrl}) =>
       base64.encode(
-        utf8.encode(jsonEncode({'V': 1, 'UUID': uuid, 'PROXY_IPS': proxyIps, 'FALLBACK_URL': fallbackUrl})),
+        utf8.encode(jsonEncode({'v': 1, 'id': uuid, 'pips': proxyIps, 'fb': fallbackUrl})),
       );
 
   /// Token creation page with the permissions pre-selected (same set as BPB-Wizard).

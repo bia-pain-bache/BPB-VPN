@@ -48,10 +48,10 @@ void main() {
   test('ENV is base64 JSON with the UUID, proxy IPs and fallback website', () {
     final env = CloudflareApi.encodeEnv(uuid: 'u-1', proxyIps: ['p.example.com', '1.2.3.4:443'], fallbackUrl: '');
     expect(decodeEnv(env), {
-      'V': 1,
-      'UUID': 'u-1',
-      'PROXY_IPS': ['p.example.com', '1.2.3.4:443'],
-      'FALLBACK_URL': '',
+      'v': 1,
+      'id': 'u-1',
+      'pips': ['p.example.com', '1.2.3.4:443'],
+      'fb': '',
     });
   });
 

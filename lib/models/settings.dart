@@ -383,7 +383,7 @@ class VlessSettings {
   final String? upstreamProxy;
 
   /// Used by the worker to reach Cloudflare-hosted sites; empty: its built-in default.
-  /// Pushed to the worker's `PROXY_IPS` variable.
+  /// Pushed to the worker's `pips` variable.
   final List<String> proxyIps;
 
   /// Site the worker shows to non-VPN visitors; null: 404. Pushed to the worker's
