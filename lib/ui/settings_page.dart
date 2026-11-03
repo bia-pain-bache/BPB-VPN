@@ -293,6 +293,7 @@ class SettingsPage extends StatelessWidget {
                 'vless.enableTcpFastOpen',
                 'TCP Fast Open',
                 icon: Symbols.bolt_rounded,
+                subtitle: 'Enable with caution',
               ),
               const TextPref(
                 'vless.fallbackUrl',

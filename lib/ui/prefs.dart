@@ -252,7 +252,7 @@ class SettingsCard extends StatelessWidget {
       elevation: 0,
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(6),
         child: ListTileTheme.merge(
           child: Column(
             children: [

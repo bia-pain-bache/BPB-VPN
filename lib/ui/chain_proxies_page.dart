@@ -102,7 +102,7 @@ class ChainProxiesPage extends StatelessWidget {
         padding: const EdgeInsets.only(top: 8, bottom: 96),
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
             child: Text(
               'Traffic exits through the chain proxy when Chain proxy is selected as the exit node.\n'
               'WireGuard and Hysteria protocols work over WARP and MASQUE only.',

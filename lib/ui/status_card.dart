@@ -75,7 +75,7 @@ class _StatusCardState extends State<StatusCard> {
     final muted = scheme.onSurfaceVariant;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 12),
       color: scheme.surfaceContainer,
       elevation: 0,
       shape: roundedShape(kHeroRadius),

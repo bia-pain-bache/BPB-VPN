@@ -49,12 +49,12 @@ class ConnectionCard extends StatelessWidget {
     final chain = state.exitChain;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 12),
       shape: roundedShape(kCardRadius),
       color: scheme.surfaceContainer,
       elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -75,7 +75,7 @@ class ConnectionCard extends StatelessWidget {
               child: hasExitNode
                   ? _Row(
                       icon: Symbols.logout_rounded,
-                      label: 'Exit node',
+                      label: 'Exit Node',
                       selector: ChipMenu(
                         values: nodes,
                         selected: exit,

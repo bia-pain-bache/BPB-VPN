@@ -97,7 +97,7 @@ class _ReconnectBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     return Card(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       shape: roundedShape(kCardRadius),
       color: Theme.of(context).colorScheme.surfaceContainer,
       elevation: 0,
@@ -128,7 +128,7 @@ class _TrafficRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Column(
         children: [
           Row(
@@ -136,7 +136,6 @@ class _TrafficRow extends StatelessWidget {
               Expanded(
                 child: _TrafficCard(
                   icon: Symbols.arrow_downward_rounded,
-                  label: 'Download',
                   rate: state.downSpeed,
                   total: state.totalDown,
                 ),
@@ -145,7 +144,6 @@ class _TrafficRow extends StatelessWidget {
               Expanded(
                 child: _TrafficCard(
                   icon: Symbols.arrow_upward_rounded,
-                  label: 'Upload',
                   rate: state.upSpeed,
                   total: state.totalUp,
                 ),
@@ -160,12 +158,10 @@ class _TrafficRow extends StatelessWidget {
 
 class _TrafficCard extends StatelessWidget {
   final IconData icon;
-  final String label;
   final int rate;
   final int total;
   const _TrafficCard({
     required this.icon,
-    required this.label,
     required this.rate,
     required this.total,
   });
@@ -180,25 +176,21 @@ class _TrafficCard extends StatelessWidget {
       color: theme.colorScheme.surfaceContainer,
       elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(icon, size: 16, color: muted),
-                const SizedBox(width: 4),
+                Icon(icon, size: 18, weight: 700, color: muted),
+                const SizedBox(width: 6),
                 Text(
-                  label,
-                  style: theme.textTheme.labelMedium?.copyWith(color: muted),
+                  '${formatBytes(rate)}/s',
+                  style: theme.textTheme.titleMedium?.merge(_tabular),
                 ),
               ],
             ),
             const SizedBox(height: 4),
-            Text(
-              '${formatBytes(rate)}/s',
-              style: theme.textTheme.titleMedium?.merge(_tabular),
-            ),
             const SizedBox(height: 2),
             Text(
               'Total ${formatBytes(total)}',
@@ -232,12 +224,12 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 12),
       shape: roundedShape(kCardRadius),
       color: theme.colorScheme.surfaceContainer,
       elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 4, 12),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -248,7 +240,14 @@ class _InfoCard extends StatelessWidget {
                 Expanded(child: Text(title, style: theme.textTheme.titleSmall)),
                 IconButton(
                   tooltip: 'Refresh',
-                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 24,
+                    height: 24,
+                  ),
+                  style: IconButton.styleFrom(
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   onPressed: loading ? null : onRefresh,
                   icon: loading
                       ? const SizedBox(
@@ -260,13 +259,14 @@ class _InfoCard extends StatelessWidget {
                 ),
               ],
             ),
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: children,
-              ),
+            const SizedBox(height: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
             ),
+            // Padding(
+            //   padding: const EdgeInsets.only(right: 0),
+            // ),
           ],
         ),
       ),
@@ -377,7 +377,7 @@ class _AccountUsage extends StatelessWidget {
             style: style,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 10),
         LinearProgressIndicator(
           value: ratio.clamp(0.0, 1.0),
           minHeight: 6,
