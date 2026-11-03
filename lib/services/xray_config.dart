@@ -334,11 +334,11 @@ class XrayConfigBuilder {
 
   List<String> _addressesFor(
     String domain,
-    bool isFragment, [
-    List<String> resolved = const [],
-  ]) => {
+    bool isFragment,
+    // [List<String> resolved = const []],
+  ) => {
     domain,
-    ...resolved,
+    // ...resolved,
     ..._vless.cleanIps.where(_allowedAddress),
     if (!isFragment && _vless.customCdn.enabled) ..._vless.customCdn.addresses,
   }.toList();
@@ -444,36 +444,28 @@ class XrayConfigBuilder {
     List<Map<String, dynamic>> chain,
   ) async {
     final proxies = <Map<String, dynamic>>[];
-    final allAddresses = <String>{};
     var index = 1;
 
+    final domain = p.domains.length == 1 ? p.domains[0] : p.domains[1];
+    final addresses = _addressesFor(domain, isFragment);
+    final ports = _ports();
     final upstream = isFragment ? null : _upstream;
-    for (final domain in p.domains) {
-      final resolved = await resolver(domain, ipv6: _general.enableIpv6);
-      final addresses = _addressesFor(domain, isFragment, resolved);
-      allAddresses.addAll(addresses);
-      if (upstream != null) {
-        allAddresses.add(upstream.host);
+
+    if (upstream != null) {
+      addresses.add(upstream.host);
+      ports.add(upstream.port);
+    }
+
+    for (final port in ports) {
+      for (final address in addresses) {
+        if ((port == upstream?.port) ^ (address == upstream?.host)) continue;
         proxies.add(
-          _wsOutbound(
-            'proxy-$index',
-            upstream.host,
-            upstream.port,
-            domain,
-            isFragment,
-          ),
+          _wsOutbound('proxy-$index', address, port, domain, isFragment),
         );
         index++;
       }
-      for (final port in _ports()) {
-        for (final address in addresses) {
-          proxies.add(
-            _wsOutbound('proxy-$index', address, port, domain, isFragment),
-          );
-          index++;
-        }
-      }
     }
+
     if (proxies.isEmpty) {
       throw StateError(
         'No usable ports. Enable at least one TLS port in settings.',
@@ -485,7 +477,7 @@ class XrayConfigBuilder {
       isBalancer: true,
       // BPB's: the second address when there is one.
       balancerFallback: proxies.length > 1 ? 'proxy-2' : 'proxy-1',
-      outboundAddrs: allAddresses.toList(),
+      outboundAddrs: addresses,
     );
     return XrayBuild(config);
   }
@@ -692,7 +684,6 @@ class XrayConfigBuilder {
     }
 
     final config = Map<String, dynamic>.of(v23)
-      ..remove('__Credits__')
       ..remove('remarks')
       ..remove('version');
     final mixed = inbounds.firstWhere((i) => i['tag'] == 'mixed-in');
@@ -1473,7 +1464,7 @@ class XrayConfigBuilder {
           {
             'endpoint': endpoint,
             'publicKey': account.publicKey,
-            'keepAlive': 5,
+            'keepAlive': _warp.keepAlive,
           },
         ],
         'reserved': _warp.enableReservedBytes

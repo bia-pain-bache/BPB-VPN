@@ -23,18 +23,22 @@ String _str(Object? v, String def) => v is String ? v : def;
 String _choice(Object? value, Set<String> choices, String fallback) =>
     value is String && choices.contains(value) ? value : fallback;
 
-String? _strOrNull(Object? v) => v is String && v.trim().isNotEmpty ? v.trim() : null;
+String? _strOrNull(Object? v) =>
+    v is String && v.trim().isNotEmpty ? v.trim() : null;
 
 bool _bool(Object? v, bool def) => v is bool ? v : def;
 
 int _int(Object? v, int def) => v is num ? v.toInt() : def;
 
-List<String> _strList(Object? v, List<String> def) =>
-    v is List ? v.map((e) => '$e'.trim()).where((e) => e.isNotEmpty).toList() : def;
+List<String> _strList(Object? v, List<String> def) => v is List
+    ? v.map((e) => '$e'.trim()).where((e) => e.isNotEmpty).toList()
+    : def;
 
-List<int> _intList(Object? v, List<int> def) => v is List ? v.whereType<num>().map((e) => e.toInt()).toList() : def;
+List<int> _intList(Object? v, List<int> def) =>
+    v is List ? v.whereType<num>().map((e) => e.toInt()).toList() : def;
 
-Map<String, dynamic> _map(Object? v) => v is Map ? Map<String, dynamic>.from(v) : const {};
+Map<String, dynamic> _map(Object? v) =>
+    v is Map ? Map<String, dynamic>.from(v) : const {};
 
 /// Reads [path] ("vless.ech.enabled") from nested maps.
 Object? readPath(Map<String, dynamic> json, String path) {
@@ -47,12 +51,17 @@ Object? readPath(Map<String, dynamic> json, String path) {
 }
 
 /// Returns a copy of [json] with [path] set to [value].
-Map<String, dynamic> writePath(Map<String, dynamic> json, String path, Object? value,
+Map<String, dynamic> writePath(
+  Map<String, dynamic> json,
+  String path,
+  Object? value,
 ) {
   final keys = path.split('.');
   Map<String, dynamic> write(Map<String, dynamic> node, int i) {
     final copy = Map<String, dynamic>.of(node);
-    copy[keys[i]] = i == keys.length - 1 ? value : write(_map(node[keys[i]]), i + 1);
+    copy[keys[i]] = i == keys.length - 1
+        ? value
+        : write(_map(node[keys[i]]), i + 1);
     return copy;
   }
 
@@ -61,7 +70,9 @@ Map<String, dynamic> writePath(Map<String, dynamic> json, String path, Object? v
 
 /// The parts of [json] that differ from [defaults] (objects compared field by field,
 /// lists as a whole).
-Map<String, dynamic> sparseDiff(Map<String, dynamic> json, Map<String, dynamic> defaults,
+Map<String, dynamic> sparseDiff(
+  Map<String, dynamic> json,
+  Map<String, dynamic> defaults,
 ) {
   final out = <String, dynamic>{};
   for (final e in json.entries) {
@@ -93,10 +104,12 @@ class Range {
     return min <= max ? Range(min, max) : def;
   }
 
-  static Range? parseOrNull(Object? v) => v is Map ? parse(v, const Range(0, 0)) : null;
+  static Range? parseOrNull(Object? v) =>
+      v is Map ? parse(v, const Range(0, 0)) : null;
 
-  static List<Range> parseList(Object? v, List<Range> def) =>
-      v is List ? v.whereType<Map>().map((e) => parse(e, const Range(0, 0))).toList() : def;
+  static List<Range> parseList(Object? v, List<Range> def) => v is List
+      ? v.whereType<Map>().map((e) => parse(e, const Range(0, 0))).toList()
+      : def;
 
   Map<String, dynamic> toJson() => {'min': min, 'max': max};
 
@@ -107,7 +120,8 @@ class Range {
   String toString() => min == max ? '$min' : '$min–$max';
 
   @override
-  bool operator ==(Object other) => other is Range && other.min == min && other.max == max;
+  bool operator ==(Object other) =>
+      other is Range && other.min == min && other.max == max;
 
   @override
   int get hashCode => Object.hash(min, max);
@@ -122,11 +136,15 @@ class DnsServer {
 
   static DnsServer parse(Object? v, DnsServer def) {
     if (v is! Map) return def;
-    return DnsServer(_str(v['server'], def.server), _strList(v['bootstrapIps'], const []),
+    return DnsServer(
+      _str(v['server'], def.server),
+      _strList(v['bootstrapIps'], const []),
     );
   }
 
-  Map<String, dynamic> toJson() => {'server': server, 'bootstrapIps': bootstrapIps,
+  Map<String, dynamic> toJson() => {
+    'server': server,
+    'bootstrapIps': bootstrapIps,
   };
 }
 
@@ -148,7 +166,8 @@ enum FragmentPackets {
   /// Shown as Xray's value, as in BPB's panel.
   String get label => xray;
 
-  static FragmentPackets parse(Object? v) => values.where((p) => p.json == v).firstOrNull ?? FragmentPackets.tlsHello;
+  static FragmentPackets parse(Object? v) =>
+      values.where((p) => p.json == v).firstOrNull ?? FragmentPackets.tlsHello;
 }
 
 /// One Xray finalmask "fragment" entry. [lengths]/[delays] apply to the 1st, 2nd…
@@ -216,9 +235,13 @@ class UdpNoise {
     final type = NoiseType.values.asNameMap()[v['type']] ?? NoiseType.rand;
     return UdpNoise(
       type: type,
-      size: type == NoiseType.rand ? Range.parse(v['size'], const Range(50, 100)) : null,
+      size: type == NoiseType.rand
+          ? Range.parse(v['size'], const Range(50, 100))
+          : null,
       bytes: type == NoiseType.array ? _intList(v['bytes'], const []) : null,
-      packet: type != NoiseType.rand && type != NoiseType.array ? _str(v['packet'], '') : null,
+      packet: type != NoiseType.rand && type != NoiseType.array
+          ? _str(v['packet'], '')
+          : null,
       count: _int(v['count'], 1).clamp(1, 100),
       delay: Range.parse(v['delay'], const Range(1, 5)),
     );
@@ -228,7 +251,8 @@ class UdpNoise {
     'type': type.name,
     if (type == NoiseType.rand) 'size': (size ?? const Range(50, 100)).toJson(),
     if (type == NoiseType.array) 'bytes': bytes ?? const [],
-    if (type != NoiseType.rand && type != NoiseType.array) 'packet': packet ?? '',
+    if (type != NoiseType.rand && type != NoiseType.array)
+      'packet': packet ?? '',
     'count': count,
     'delay': delay.toJson(),
   };
@@ -249,7 +273,9 @@ class RuleGroup {
     final j = _map(v);
     final stored = _map(j['presets']);
     return RuleGroup(
-      {for (final e in defaults.presets.entries) e.key: _bool(stored[e.key], e.value),
+      {
+        for (final e in defaults.presets.entries)
+          e.key: _bool(stored[e.key], e.value),
       },
       domains: _strList(j['domains'], const []),
       ips: _strList(j['ips'], const []),
@@ -258,7 +284,10 @@ class RuleGroup {
 
   bool isOn(String preset) => presets[preset] ?? false;
 
-  Map<String, dynamic> toJson() => {'presets': presets, 'domains': domains, 'ips': ips,
+  Map<String, dynamic> toJson() => {
+    'presets': presets,
+    'domains': domains,
+    'ips': ips,
   };
 }
 
@@ -288,7 +317,9 @@ class GeneralSettings {
     return GeneralSettings(
       localDns: _str(j['localDns'], d.localDns),
       antiSanctionDns: _str(
-        j['antiSanctionDns'] is Map ? (j['antiSanctionDns'] as Map)['server'] : j['antiSanctionDns'],
+        j['antiSanctionDns'] is Map
+            ? (j['antiSanctionDns'] as Map)['server']
+            : j['antiSanctionDns'],
         d.antiSanctionDns,
       ),
       enableFakeDns: _bool(j['enableFakeDns'], d.enableFakeDns),
@@ -348,7 +379,11 @@ class CustomCdnSettings {
   final List<String> addresses;
   final String? host;
   final String? sni;
-  const CustomCdnSettings({this.enabled = false, this.addresses = const [], this.host, this.sni,
+  const CustomCdnSettings({
+    this.enabled = false,
+    this.addresses = const [],
+    this.host,
+    this.sni,
   });
 
   static CustomCdnSettings parse(Object? v) {
@@ -363,7 +398,11 @@ class CustomCdnSettings {
     );
   }
 
-  Map<String, dynamic> toJson() => {'enabled': enabled, 'addresses': addresses, 'host': host, 'sni': sni,
+  Map<String, dynamic> toJson() => {
+    'enabled': enabled,
+    'addresses': addresses,
+    'host': host,
+    'sni': sni,
   };
 }
 
@@ -393,7 +432,7 @@ class VlessSettings {
   const VlessSettings({
     this.remoteDns = const DnsServer('https://8.8.8.8/dns-query'),
     this.ports = const [443],
-    this.cleanIps = const ['www.speedtest.net'],
+    this.cleanIps = const ['104.17.148.22', '104.17.147.22'],
     this.tlsFingerprint = 'chrome',
     this.speedTestInterval = 60,
     this.enableTcpFastOpen = false,
@@ -441,6 +480,7 @@ class WarpSettings {
   /// IP of the DNS server used through WARP.
   final String remoteDns;
   final List<String> endpoints;
+  final int keepAlive;
   final int speedTestInterval;
   final bool enableReservedBytes;
 
@@ -451,6 +491,7 @@ class WarpSettings {
     this.remoteDns = '1.1.1.1',
     // Set from the account's registration (see AppState.renewWarpAccount).
     this.endpoints = const [],
+    this.keepAlive = 10,
     this.speedTestInterval = 30,
     this.enableReservedBytes = true,
     this.account,
@@ -462,16 +503,22 @@ class WarpSettings {
     return WarpSettings(
       remoteDns: _str(j['remoteDns'], d.remoteDns),
       endpoints: _strList(j['endpoints'], d.endpoints),
+      keepAlive: _int(j['keepAlive'], d.keepAlive),
       speedTestInterval: _int(j['speedTestInterval'], d.speedTestInterval),
-      enableReservedBytes: _bool(j['enableReservedBytes'], d.enableReservedBytes,
+      enableReservedBytes: _bool(
+        j['enableReservedBytes'],
+        d.enableReservedBytes,
       ),
-      account: j['account'] is Map ? WarpAccount.fromJson(_map(j['account'])) : null,
+      account: j['account'] is Map
+          ? WarpAccount.fromJson(_map(j['account']))
+          : null,
     );
   }
 
   Map<String, dynamic> toJson() => {
     'remoteDns': remoteDns,
     'endpoints': endpoints,
+    'keepAlive': keepAlive,
     'speedTestInterval': speedTestInterval,
     'enableReservedBytes': enableReservedBytes,
     'account': account?.toJson(),
@@ -499,10 +546,16 @@ class ServerlessSettings {
     const d = ServerlessSettings();
     return ServerlessSettings(
       fragments: j['fragments'] is List
-          ? (j['fragments'] as List).whereType<Map>().map(Fragment.parse).toList()
+          ? (j['fragments'] as List)
+                .whereType<Map>()
+                .map(Fragment.parse)
+                .toList()
           : d.fragments,
       udpNoises: j['udpNoises'] is List
-          ? (j['udpNoises'] as List).whereType<Map>().map(UdpNoise.parse).toList()
+          ? (j['udpNoises'] as List)
+                .whereType<Map>()
+                .map(UdpNoise.parse)
+                .toList()
           : d.udpNoises,
       udpNoiseReset: Range.parse(j['udpNoiseReset'], d.udpNoiseReset),
     );
@@ -565,13 +618,21 @@ class MasqueSettings {
       endpoints: _strList(j['endpoints'], d.endpoints),
       speedTestInterval: _int(j['speedTestInterval'], d.speedTestInterval),
       fragments: j['fragments'] is List
-          ? (j['fragments'] as List).whereType<Map>().map(Fragment.parse).toList()
+          ? (j['fragments'] as List)
+                .whereType<Map>()
+                .map(Fragment.parse)
+                .toList()
           : d.fragments,
       udpNoises: j['udpNoises'] is List
-          ? (j['udpNoises'] as List).whereType<Map>().map(UdpNoise.parse).toList()
+          ? (j['udpNoises'] as List)
+                .whereType<Map>()
+                .map(UdpNoise.parse)
+                .toList()
           : d.udpNoises,
       udpNoiseReset: Range.parse(j['udpNoiseReset'], d.udpNoiseReset),
-      account: j['account'] is Map ? MasqueAccount.fromJson(_map(j['account'])) : null,
+      account: j['account'] is Map
+          ? MasqueAccount.fromJson(_map(j['account']))
+          : null,
     );
   }
 
@@ -600,14 +661,19 @@ class TorSettings {
   static const transports = {'webtunnel', 'obfs4', 'snowflake', 'meek_lite'};
 
   /// [line] without a leading "Bridge " and surrounding spaces.
-  static String normalize(String line) => line.trim().replaceFirst(RegExp(r'^bridge\s+', caseSensitive: false), '');
+  static String normalize(String line) =>
+      line.trim().replaceFirst(RegExp(r'^bridge\s+', caseSensitive: false), '');
 
   /// Whether [line] is a bridge of a transport in [transports].
-  static bool isBridge(String line) => transports.contains(normalize(line).split(RegExp(r'\s+')).first);
+  static bool isBridge(String line) =>
+      transports.contains(normalize(line).split(RegExp(r'\s+')).first);
 
   static TorSettings parse(Object? v) {
     final j = _map(v);
-    return TorSettings(bridges: _strList(j['bridges'], const [],
+    return TorSettings(
+      bridges: _strList(
+        j['bridges'],
+        const [],
       ).where(isBridge).map(normalize).toList(),
     );
   }
@@ -618,7 +684,11 @@ class TorSettings {
 /// Built-in routing presets, each with its default and how it behaves.
 class RoutingPresets {
   /// Direct, resolved with the local DNS, matched by domain and IP; BitTorrent by protocol.
-  static const bypass = {'iran': false, 'china': false, 'russia': false, 'bittorrent': false,
+  static const bypass = {
+    'iran': false,
+    'china': false,
+    'russia': false,
+    'bittorrent': false,
   };
 
   /// Direct, resolved with the anti-sanction DNS, matched by domain only.
@@ -701,7 +771,8 @@ class Profile {
   final Range udpNoiseReset;
   final RoutingSettings routing;
 
-  static const defaultUdpNoises = [UdpNoise(type: NoiseType.rand, size: Range(50, 100), count: 5),
+  static const defaultUdpNoises = [
+    UdpNoise(type: NoiseType.rand, size: Range(50, 100), count: 5),
   ];
   static const defaultUdpNoiseReset = Range(30, 60);
 
@@ -726,7 +797,10 @@ class Profile {
     masque: MasqueSettings.parse(j['masque']),
     serverless: ServerlessSettings.parse(j['serverless']),
     tor: TorSettings.parse(j['tor']),
-    chains: (j['chains'] as List? ?? const []).map(ChainProxy.parse).whereType<ChainProxy>().toList(),
+    chains: (j['chains'] as List? ?? const [])
+        .map(ChainProxy.parse)
+        .whereType<ChainProxy>()
+        .toList(),
     fragments: j['fragments'] is List
         ? (j['fragments'] as List).whereType<Map>().map(Fragment.parse).toList()
         : const [Fragment()],
@@ -784,7 +858,8 @@ class Profile {
       .updated('tor.bridges', tor.bridges);
 
   /// A copy with [path] ("vless.ech.enabled") set to [value], re-validated.
-  Profile updated(String path, Object? value) => Profile.fromJson(writePath(toJson(), path, value));
+  Profile updated(String path, Object? value) =>
+      Profile.fromJson(writePath(toJson(), path, value));
 }
 
 // endregion
@@ -999,11 +1074,10 @@ class DeviceSettings {
         const {'normal', 'obfuscated'},
         d.warpVariant,
       ),
-      masqueVariant: _choice(
-        connection['masqueVariant'],
-        const {'normal', 'obfuscated'},
-        d.masqueVariant,
-      ),
+      masqueVariant: _choice(connection['masqueVariant'], const {
+        'normal',
+        'obfuscated',
+      }, d.masqueVariant),
       serverlessMode: _str(connection['serverlessMode'], d.serverlessMode),
       torBridge: torBridges.containsKey(bridge) ? bridge : d.torBridge,
       exitNode: ExitNode.values.asNameMap()[exit['node']] ?? d.exitNode,
@@ -1029,7 +1103,10 @@ class DeviceSettings {
     'logLevel': logLevel,
     'mtu': mtu,
     'perAppProxy': {'mode': perAppMode.name, 'apps': perAppApps},
-    'lanSharing': {'enabled': lanSharing, 'username': lanUsername, 'password': lanPassword,
+    'lanSharing': {
+      'enabled': lanSharing,
+      'username': lanUsername,
+      'password': lanPassword,
     },
     'connection': {
       'type': connectionType,
@@ -1052,13 +1129,15 @@ class DeviceSettings {
 
   Map<String, dynamic> toSparseJson() => {
     'schemaVersion': schemaVersion,
-    ...sparseDiff(toJson(), const DeviceSettings().toJson())..remove('schemaVersion'),
+    ...sparseDiff(toJson(), const DeviceSettings().toJson())
+      ..remove('schemaVersion'),
   };
 
   /// The exit node chosen for a connection type ([mode]: a ConnectionMode name).
   ExitNode exitNodeFor(String mode) => exitNodes[mode] ?? exitNode;
 
-  DeviceSettings updated(String path, Object? value) => DeviceSettings.fromJson(writePath(toJson(), path, value));
+  DeviceSettings updated(String path, Object? value) =>
+      DeviceSettings.fromJson(writePath(toJson(), path, value));
 
   /// Login for the local proxy: only with LAN sharing on and both fields set.
   ({String user, String pass})? get lanAuth {

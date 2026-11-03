@@ -355,6 +355,15 @@ class SettingsPage extends StatelessWidget {
                 ).push(MaterialPageRoute(builder: (_) => const NoisesPage())),
               ),
               const IntPref(
+                'warp.keepAlive',
+                'Keep alive interval (s)',
+                icon: Symbols.timer_rounded,
+                help: 'Keep WARP connection alive. Set 0 to disable.',
+                min: 0,
+                max: 25,
+                suffix: ' s',
+              ),
+              const IntPref(
                 'warp.speedTestInterval',
                 'Speed test interval (s)',
                 icon: Symbols.timer_rounded,

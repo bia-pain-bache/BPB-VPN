@@ -763,7 +763,6 @@ void main() {
         expect(c['routing'], original['routing']);
         expect(c['dns'], original['dns']);
         expect(c['outbounds'], original['outbounds']);
-        expect(c.containsKey('__Credits__'), isFalse);
 
         final inbounds = (c['inbounds'] as List).cast<Map>();
         expect(inbounds.map((i) => i['tag']), [
