@@ -143,18 +143,6 @@ void main() {
       )
       .firstOrNull;
 
-  test('best ping only uses TLS ports', () async {
-    final c = (await builder({
-      'vless': {
-        'ports': [443, 80, 2053],
-      },
-    }).build(ConnectionMode.worker)).config;
-    expect(outboundsOf(c, 'proxy-').map((o) => o['settings']['port']).toSet(), {
-      443,
-      2053,
-    });
-  });
-
   test('config has tun inbound, vless outbounds and UDP block', () async {
     final c = (await builder({}).build(ConnectionMode.worker)).config;
     expect((c['inbounds'] as List).first['protocol'], 'tun');
@@ -1809,9 +1797,9 @@ void main() {
         c,
         'proxy-',
       ).where((o) => o['settings']['address'] == 'relay.example.org').toList();
-      expect(relays.length, 2); // one per worker domain
-      expect(relays.first['settings']['port'], 8443);
-      final stream = relays.first['streamSettings'] as Map;
+      expect(relays.length, 1); // only one relay outbound, not one per port
+      expect(relays.last['settings']['port'], 8443);
+      final stream = relays.last['streamSettings'] as Map;
       expect(
         stream['security'],
         'tls',

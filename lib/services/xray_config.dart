@@ -318,10 +318,6 @@ class XrayConfigBuilder {
     }
   }
 
-  // region servers
-
-  List<int> _ports() => _vless.ports.where(httpsPorts.contains).toList();
-
   /// BPB's Upstream Proxy: a TLS TCP relay (host:port) in front of Cloudflare. Not used with fragment.
   ({String host, int port})? get _upstream {
     final match = RegExp(r'^(?:\[([^\]]+)\]|([^:]+)):(\d{1,5})$')
@@ -448,7 +444,7 @@ class XrayConfigBuilder {
 
     final domain = p.domains.length == 1 ? p.domains[0] : p.domains[1];
     final addresses = _addressesFor(domain, isFragment);
-    final ports = _ports();
+    final ports = _vless.ports;
     final upstream = isFragment ? null : _upstream;
 
     if (upstream != null) {
@@ -513,7 +509,7 @@ class XrayConfigBuilder {
       outbounds: [...chain, ...proxies],
       isBalancer: true,
       isWarp: true,
-      outboundAddrs: endpoints.map(_endpointHost).where(_isDomain).toList(),
+      outboundAddrs: endpoints.map(_endpointHost).toList(),
     );
     return XrayBuild(config);
   }
@@ -576,64 +572,14 @@ class XrayConfigBuilder {
       outbounds: [...chain, ...tagged],
       isBalancer: true,
       isWarp: true,
-      outboundAddrs: endpoints.map(_endpointHost).where(_isDomain).toList(),
+      outboundAddrs: endpoints.map(_endpointHost).toList(),
     );
     return XrayBuild(config);
   }
 
-  /// Xray's masque outbound with WARP's credentials: H2 is TLS over TCP (fragmented with the
-  /// configured MASQUE fragment settings), H3 QUIC over UDP (with [noises]).
-  Map<String, dynamic> _masqueOutbound(
-    MasqueAccount account,
-    String endpoint, {
-    required bool h3,
-    bool fragment = false,
-    List<Map<String, dynamic>>? noises,
-  }) {
-    return {
-      'protocol': 'masque',
-      'settings': {
-        'address': _endpointHost(endpoint),
-        'port': _endpointPort(endpoint),
-      },
-      'streamSettings': {
-        'network': 'masque',
-        'security': 'tls',
-        'tlsSettings': {
-          'serverName': _masque.sni,
-          'alpn': [h3 ? 'h3' : 'h2'],
-          if (!h3) 'fingerprint': _masque.tlsFingerprint,
-          if (!h3 && _masque.tlsFingerprint == 'unsafe')
-            'cipherSuites': _unsafeCipherSuites,
-        },
-        'masqueSettings': {
-          'warp': {
-            'privateKey': account.privateKey,
-            'publicKey': account.publicKey,
-            'address': [account.ipv4, account.ipv6],
-          },
-        },
-        'finalmask': fragment
-            ? _finalMask(fragment: true, fragments: _masque.fragments)
-            : noises != null
-            ? _finalMask(
-                udpNoise: true,
-                noises: noises,
-                noiseReset: _masque.udpNoiseReset,
-              )
-            : null,
-      },
-      'tag': 'proxy',
-    };
-  }
+  static int _endpointPort(String endpoint) => Uri.http(endpoint).port;
 
-  static int _endpointPort(String endpoint) =>
-      int.tryParse(endpoint.substring(endpoint.lastIndexOf(':') + 1)) ?? 443;
-
-  static String _endpointHost(String endpoint) {
-    final match = RegExp(r'^(?:\[([^\]]+)\]|([^:]+))').firstMatch(endpoint);
-    return match?.group(1) ?? match?.group(2) ?? endpoint;
-  }
+  static String _endpointHost(String endpoint) => Uri.http(endpoint).host;
 
   Future<XrayBuild> _buildServerless() async {
     final config = await _buildConfig(
@@ -1391,10 +1337,6 @@ class XrayConfigBuilder {
     String domain,
     bool isFragment,
   ) {
-    final upstream = _upstream;
-    final isTls =
-        httpsPorts.contains(port) ||
-        (upstream != null && address == upstream.host && port == upstream.port);
     final cdn = _vless.customCdn;
     final isCustomCdn = cdn.enabled && cdn.addresses.contains(address);
     final host = isCustomCdn ? (cdn.host ?? domain) : domain;
@@ -1404,7 +1346,6 @@ class XrayConfigBuilder {
 
     return {
       'protocol': 'vless',
-      // Current Xray VLESS outbound format (flat, no vnext).
       'settings': {
         'address': address,
         'port': port,
@@ -1414,22 +1355,21 @@ class XrayConfigBuilder {
       'streamSettings': {
         'network': 'ws',
         'wsSettings': {'host': host, 'path': '${_wsPath()}?ed=2560'},
-        'security': isTls ? 'tls' : 'none',
-        if (isTls)
-          'tlsSettings': {
-            'serverName': sni,
-            'fingerprint': _vless.tlsFingerprint,
-            'alpn': ['http/1.1'],
-            if (unsafeFingerprint) 'cipherSuites': _unsafeCipherSuites,
-            if (enableEch) 'echConfigList': _echConfigList(_vless.ech),
-            // Fetch the ECH config directly, not through the tunnel being set up.
-            if (enableEch) 'echSockopt': {'dialerProxy': 'direct'},
-          },
-        'sockopt': _sockopt(
-          happyEyeballs: true,
-          tcpFastOpen: _vless.enableTcpFastOpen,
-          domainStrategy: 'UseIP',
-        ),
+        'security': 'tls',
+        'tlsSettings': {
+          'serverName': sni,
+          'fingerprint': _vless.tlsFingerprint,
+          'alpn': ['http/1.1'],
+          if (unsafeFingerprint) 'cipherSuites': _unsafeCipherSuites,
+          if (enableEch) 'echConfigList': _echConfigList(_vless.ech),
+          if (enableEch) 'echSockopt': {'dialerProxy': 'direct'},
+        },
+        if (_isDomain(address))
+          'sockopt': _sockopt(
+            happyEyeballs: true,
+            tcpFastOpen: _vless.enableTcpFastOpen,
+            domainStrategy: 'UseIP',
+          ),
         if (isFragment) 'finalmask': _finalMask(fragment: true),
       },
       'tag': tag,
@@ -1455,6 +1395,9 @@ class XrayConfigBuilder {
     required bool obfuscation,
     List<Map<String, dynamic>>? noises,
   }) {
+    final address = _endpointHost(endpoint);
+    final isDomainAddr = _isDomain(address);
+
     return {
       'protocol': 'wireguard',
       'settings': {
@@ -1472,9 +1415,59 @@ class XrayConfigBuilder {
             : const [0, 0, 0],
         'secretKey': account.privateKey,
       },
-      'streamSettings': obfuscation
-          ? {'finalmask': _finalMask(udpNoise: true, noises: noises)}
-          : null,
+      if (obfuscation || isDomainAddr)
+        'streamSettings': {
+          if (obfuscation || isDomainAddr)
+            'finalmask': _finalMask(udpNoise: true, noises: noises),
+          if (isDomainAddr) 'sockopt': _sockopt(domainStrategy: 'UseIP'),
+        },
+      'tag': 'proxy',
+    };
+  }
+
+  /// Xray's masque outbound with WARP's credentials: H2 is TLS over TCP (fragmented with the
+  /// configured MASQUE fragment settings), H3 QUIC over UDP (with [noises]).
+  Map<String, dynamic> _masqueOutbound(
+    MasqueAccount account,
+    String endpoint, {
+    required bool h3,
+    bool fragment = false,
+    List<Map<String, dynamic>>? noises,
+  }) {
+    final address = _endpointHost(endpoint);
+    final port = _endpointPort(endpoint);
+    final isDomainAddr = _isDomain(address);
+
+    return {
+      'protocol': 'masque',
+      'settings': {'address': address, 'port': port},
+      'streamSettings': {
+        'network': 'masque',
+        'security': 'tls',
+        'tlsSettings': {
+          'serverName': _masque.sni,
+          'alpn': [h3 ? 'h3' : 'h2'],
+          if (!h3) 'fingerprint': _masque.tlsFingerprint,
+          if (!h3 && _masque.tlsFingerprint == 'unsafe')
+            'cipherSuites': _unsafeCipherSuites,
+        },
+        'masqueSettings': {
+          'warp': {
+            'privateKey': account.privateKey,
+            'publicKey': account.publicKey,
+            'address': [account.ipv4, account.ipv6],
+          },
+        },
+        if (isDomainAddr) 'sockopt': _sockopt(happyEyeballs: !h3, domainStrategy: 'UseIP'),
+        if (fragment)
+          'finalmask': _finalMask(fragment: true, fragments: _masque.fragments),
+        if (noises != null)
+          'finalmask': _finalMask(
+            udpNoise: true,
+            noises: noises,
+            noiseReset: _masque.udpNoiseReset,
+          ),
+      },
       'tag': 'proxy',
     };
   }
