@@ -10,23 +10,22 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VERSION=15.0.25
+VERSION=16.0
 BASE="https://dist.torproject.org/torbrowser/$VERSION"
 JNI=../android/app/src/main/jniLibs
 ASSETS=../android/app/src/main/assets
 
-declare -A ABI=([aarch64]=arm64-v8a [armv7]=armeabi-v7a [x86]=x86 [x86_64]=x86_64)
+declare -A ABI=([aarch64]=arm64-v8a [armv7]=armeabi-v7a [x86_64]=x86_64)
 declare -A SHA=(
-  [aarch64]=a1a67ec77ce0a7c4fca446fd9f915fbb0302c3107c2d56ab213196187cfd894a
-  [armv7]=4fcdb5540f7ea2f529b9063115d66dd7dfa61e5602bfaab96a78e8046bb4b8d5
-  [x86]=a76c881f1b7feb10994cacb4d0bc0b1ba388a25463b4f25985b7805af2091bbb
-  [x86_64]=11dbac44e2ee29df2cd6e3a5f38164d2630b2c85342f6a041b9cb57d7012d071
+  [aarch64]=bf8f4c63652fd7daa62288713c7fa512f244a5b972808f6251450e5fdfca9120
+  [armv7]=13befa352b64c32ba460b63066179bb1c9eaf6c3ea7057ae860dcdd22b8acf7b
+  [x86_64]=ab3152ba164bcd49e50175086c62e40ffa2bf9002a4f6473f77111bd88b0462b
 )
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
-for arch in aarch64 armv7 x86 x86_64; do
+for arch in aarch64 armv7 x86_64; do
   file="tor-expert-bundle-android-$arch-$VERSION.tar.gz"
   echo "fetching $file"
   curl -fsSL -o "$TMP/$file" "$BASE/$file"
