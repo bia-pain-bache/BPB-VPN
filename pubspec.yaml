@@ -1,5 +1,5 @@
 name: bpb
-description: "Cross-platform VPN client for BPB Worker Panel."
+description: "Cross-platform VPN client."
 publish_to: "none"
 
 version: 1.0.0+1
