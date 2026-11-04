@@ -70,6 +70,11 @@ jobs:
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
         run: bash scripts/build_xray.sh
 
+      - name: Free Go build cache before APK packaging
+        run: |
+          go clean -cache -modcache
+          df -h /
+
       - name: Routing data (Chocolate4U/Iran-v2ray-rules, latest)
         run: bash scripts/fetch_geo.sh
 
