@@ -4,7 +4,7 @@
 # Project
 !/.gitignore
 !/README.md
-!/CHANGELOG.md
+!/RELEASE_NOTES.md
 !/LICENSE
 !/pubspec.yaml
 !/pubspec.lock

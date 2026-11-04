@@ -28,27 +28,14 @@ jobs:
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
-      - name: Prepare manual release notes
+      - name: Check manual release notes
         run: |
           set -euo pipefail
-          heading="## [$VERSION]"
-          awk -v heading="$heading" '
-            !found && index($0, heading) == 1 &&
-              (length($0) == length(heading) || substr($0, length(heading) + 1, 1) == " ") {
-              found = 1
-              next
-            }
-            found && /^## / { exit }
-            found { print }
-            END { if (!found) exit 1 }
-          ' CHANGELOG.md > release-notes.md || {
-            echo "::error::CHANGELOG.md has no section for $VERSION (expected: $heading)"
-            exit 1
-          }
-          if ! grep -q '[^[:space:]]' release-notes.md || grep -q '<!--' release-notes.md; then
-            echo "::error::Add the manual release notes under $heading in CHANGELOG.md before tagging."
+          if [ ! -s RELEASE_NOTES.md ] || ! grep -q '[^[:space:]]' RELEASE_NOTES.md; then
+            echo "::error::Write this release's notes in RELEASE_NOTES.md before pushing the tag."
             exit 1
           fi
+          cp RELEASE_NOTES.md release-notes.md
 
       - uses: actions/setup-java@v4
         with:
