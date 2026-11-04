@@ -178,6 +178,7 @@ object ConfigStore {
         val perAppMode: String, // off | include | exclude
         val apps: Set<String>,
         val mtu: Int,
+        val appendHttpProxy: Boolean = false,
         /** Proxy mode: only the local SOCKS/HTTP proxy, no VPN (TUN) device. */
         val proxyOnly: Boolean = false,
         /** "psiphon" or "tor" to start that exit process; null for none. */
@@ -203,6 +204,7 @@ object ConfigStore {
             .putString("perAppMode", options.perAppMode)
             .putStringSet("apps", options.apps)
             .putInt("mtu", options.mtu)
+            .putBoolean("appendHttpProxy", options.appendHttpProxy)
             .putBoolean("proxyOnly", options.proxyOnly)
             .putString("exit", options.exit)
             .putBoolean("exitDirect", options.exitDirect)
@@ -233,6 +235,7 @@ object ConfigStore {
             perAppMode = prefs.getString("perAppMode", null) ?: "off",
             apps = prefs.getStringSet("apps", null) ?: emptySet(),
             mtu = prefs.getInt("mtu", 1500),
+            appendHttpProxy = prefs.getBoolean("appendHttpProxy", false),
             proxyOnly = prefs.getBoolean("proxyOnly", false),
             exit = prefs.getString("exit", null),
             exitDirect = prefs.getBoolean("exitDirect", false),

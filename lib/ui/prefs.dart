@@ -224,8 +224,9 @@ class SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(28, 20, 20, 8),
       child: Text(
         title,
-        style: theme.textTheme.titleSmall?.copyWith(
+        style: theme.textTheme.titleMedium?.copyWith(
           color: theme.colorScheme.primary,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -252,8 +253,10 @@ class SettingsCard extends StatelessWidget {
       elevation: 0,
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.symmetric(horizontal: 0),
         child: ListTileTheme.merge(
+          contentPadding: const EdgeInsets.symmetric(vertical: 6,horizontal: 20),
+          minVerticalPadding: 4,
           child: Column(
             children: [
               for (final (index, child) in children.indexed) ...[

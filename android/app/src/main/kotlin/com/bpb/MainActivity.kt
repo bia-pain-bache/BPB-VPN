@@ -87,6 +87,7 @@ class MainActivity : FlutterActivity() {
     private fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "prepare" -> prepare(result, vpn = call.argument<Boolean>("vpn") ?: true)
+            "supportsAppendHttpProxy" -> result.success(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
             "start" -> {
                 val config = call.argument<String>("config")
                 if (config.isNullOrEmpty()) {
@@ -100,6 +101,7 @@ class MainActivity : FlutterActivity() {
                         perAppMode = call.argument<String>("perAppMode") ?: "off",
                         apps = call.argument<List<String>>("apps")?.toSet() ?: emptySet(),
                         mtu = call.argument<Int>("mtu") ?: 1500,
+                        appendHttpProxy = call.argument<Boolean>("appendHttpProxy") ?: false,
                         proxyOnly = call.argument<Boolean>("proxyOnly") ?: false,
                         exit = call.argument<String>("exit"),
                         exitDirect = call.argument<Boolean>("exitDirect") ?: false,

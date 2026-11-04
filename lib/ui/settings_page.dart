@@ -130,7 +130,7 @@ class SettingsPage extends StatelessWidget {
                 'device.lanSharing.enabled',
                 'Allow LAN connections',
                 icon: Symbols.lan_rounded,
-                subtitle: 'Enable a SOCKS or HTTP proxy on port 10808',
+                subtitle: 'Enable a Socks or HTTP proxy on port 10808',
               ),
               if (d.lanSharing) ...[
                 const TextPref(
@@ -155,6 +155,17 @@ class SettingsPage extends StatelessWidget {
                   validator: validateProxyPassword,
                 ),
               ],
+              FutureBuilder<bool>(
+                future: VpnChannel.supportsAppendHttpProxy,
+                builder: (context, snapshot) => snapshot.data == true
+                    ? const SwitchPref(
+                        'device.appendHttpProxy',
+                        'Add HTTP proxy to VPN',
+                        icon: Symbols.http_rounded,
+                        subtitle: 'Use HTTP proxy directly for supported apps like browsers',
+                      )
+                    : const SizedBox.shrink(),
+              ),
               const IntPref(
                 'device.mtu',
                 'VPN MTU',
@@ -1240,14 +1251,17 @@ class _VersionsPage extends StatelessWidget {
               SettingsCard(
                 children: [
                   ListTile(
+                    leading: const Icon(Symbols.widgets_rounded),
                     title: const Text('Xray core · Mod'),
                     subtitle: Text(shown((s) => s, v?.xray)),
                   ),
                   ListTile(
+                    leading: const Icon(Symbols.widgets_rounded),
                     title: const Text('Psiphon tunnel core · Mod'),
                     subtitle: Text(shown(_psiphon, v?.psiphon)),
                   ),
                   ListTile(
+                    leading: const Icon(Symbols.widgets_rounded),
                     title: const Text('Tor Expert Bundle'),
                     subtitle: Text(shown(_tor, v?.tor)),
                   ),

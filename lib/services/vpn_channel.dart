@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'mitm_ca.dart';
@@ -29,6 +30,16 @@ class InstalledApp {
 class VpnChannel {
   static const _methods = MethodChannel('bpb/core');
   static const _events = EventChannel('bpb/state');
+  static Future<bool>? _supportsAppendHttpProxy;
+
+  static Future<bool> get supportsAppendHttpProxy {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return Future.value(false);
+    }
+    return _supportsAppendHttpProxy ??= _methods
+        .invokeMethod<bool>('supportsAppendHttpProxy')
+        .then((supported) => supported ?? false);
+  }
 
   static Stream<VpnStateEvent> get states => _events.receiveBroadcastStream().map((e) {
     final map = Map<String, dynamic>.from(e as Map);
@@ -52,6 +63,7 @@ class VpnChannel {
     required String perAppMode,
     required List<String> apps,
     required int mtu,
+    bool appendHttpProxy = false,
     bool proxyOnly = false,
     String? exit,
     bool exitDirect = false,
@@ -66,6 +78,7 @@ class VpnChannel {
     'perAppMode': perAppMode,
     'apps': apps,
     'mtu': mtu,
+    'appendHttpProxy': appendHttpProxy,
     'proxyOnly': proxyOnly,
     // Starts that exit process ("psiphon" / "tor"); null for none.
     'exit': exit,

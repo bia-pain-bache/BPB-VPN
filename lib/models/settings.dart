@@ -968,6 +968,7 @@ class DeviceSettings {
   final AppMode appMode;
   final String logLevel;
   final int mtu;
+  final bool appendHttpProxy;
   final PerAppMode perAppMode;
   final List<String> perAppApps;
   final bool lanSharing;
@@ -1013,6 +1014,7 @@ class DeviceSettings {
     this.appMode = AppMode.vpn,
     this.logLevel = 'warning',
     this.mtu = 1500,
+    this.appendHttpProxy = false,
     this.perAppMode = PerAppMode.off,
     this.perAppApps = const [],
     this.lanSharing = false,
@@ -1051,6 +1053,7 @@ class DeviceSettings {
       appMode: AppMode.values.asNameMap()[j['appMode']] ?? d.appMode,
       logLevel: _str(j['logLevel'], d.logLevel),
       mtu: _int(j['mtu'], d.mtu),
+      appendHttpProxy: _bool(j['appendHttpProxy'], d.appendHttpProxy),
       perAppMode: PerAppMode.values.asNameMap()[perApp['mode']] ?? d.perAppMode,
       perAppApps: _strList(perApp['apps'], d.perAppApps),
       lanSharing: _bool(lan['enabled'], d.lanSharing),
@@ -1102,6 +1105,7 @@ class DeviceSettings {
     'appMode': appMode.name,
     'logLevel': logLevel,
     'mtu': mtu,
+    'appendHttpProxy': appendHttpProxy,
     'perAppProxy': {'mode': perAppMode.name, 'apps': perAppApps},
     'lanSharing': {
       'enabled': lanSharing,

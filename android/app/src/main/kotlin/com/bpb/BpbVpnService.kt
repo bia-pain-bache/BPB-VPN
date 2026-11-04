@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.net.ProxyInfo
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -29,6 +30,7 @@ class BpbVpnService : VpnService() {
         private const val TUN_IPV4 = "10.10.14.1"
         private const val TUN_IPV6 = "fd66:b9b:10:14::1"
         private const val TUN_DNS = "1.1.1.1"
+        private const val LOCAL_HTTP_PROXY_PORT = 10808
 
         fun start(context: Context) {
             val intent = Intent(context, BpbVpnService::class.java).setAction(ACTION_START)
@@ -134,7 +136,14 @@ class BpbVpnService : VpnService() {
             // decides whether IPv6 is actually used (see the DNS queryStrategy).
             builder.addAddress(TUN_IPV6, 126).addRoute("::", 0)
             applyPerAppRules(builder, options)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) builder.setMetered(false)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                builder.setMetered(false)
+                if (options.appendHttpProxy) {
+                    builder.setHttpProxy(
+                        ProxyInfo.buildDirectProxy("127.0.0.1", LOCAL_HTTP_PROXY_PORT),
+                    )
+                }
+            }
             builder.setConfigureIntent(openAppIntent())
 
             val fd = builder.establish()

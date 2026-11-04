@@ -146,6 +146,15 @@ void main() {
   test('stored sparse: only values that differ from the defaults', () {
     expect(const Profile().toSparseJson(), {'schemaVersion': 1});
     expect(const DeviceSettings().toSparseJson(), {'schemaVersion': 1});
+    final device = const DeviceSettings().updated('appendHttpProxy', true);
+    expect(device.toSparseJson(), {
+      'schemaVersion': 1,
+      'appendHttpProxy': true,
+    });
+    expect(
+      DeviceSettings.fromJson(device.toSparseJson()).appendHttpProxy,
+      isTrue,
+    );
 
     final p = const Profile().updated('vless.ech.enabled', true).updated(
       'warp.endpoints',

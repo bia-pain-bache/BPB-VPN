@@ -615,6 +615,7 @@ class AppState extends ChangeNotifier {
       perAppMode: device.perAppMode.name,
       apps: device.perAppApps,
       mtu: device.mtu,
+      appendHttpProxy: device.appendHttpProxy,
       proxyOnly: proxyMode,
       exit: exit,
       exitDirect: exitType != null,

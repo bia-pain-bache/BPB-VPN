@@ -74,7 +74,7 @@ class ConnectionCard extends StatelessWidget {
               alignment: Alignment.topCenter,
               child: hasExitNode
                   ? _Row(
-                      icon: Symbols.logout_rounded,
+                      icon: Symbols.exit_to_app_rounded,
                       label: 'Exit Node',
                       selector: ChipMenu(
                         values: nodes,

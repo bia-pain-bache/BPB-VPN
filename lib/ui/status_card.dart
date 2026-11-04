@@ -325,8 +325,8 @@ class _PingButton extends StatelessWidget {
             children: [
               if (state.pinging)
                 SizedBox(
-                  width: 18,
-                  height: 18,
+                  width: 22,
+                  height: 22,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
                     color: color,
@@ -339,7 +339,7 @@ class _PingButton extends StatelessWidget {
                   weight: 700,
                   color: color,
                 ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 6),
               Text(
                 state.pinging
                     ? 'Testing'

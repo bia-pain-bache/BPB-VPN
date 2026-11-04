@@ -182,11 +182,11 @@ class _TrafficCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(icon, size: 18, weight: 700, color: muted),
+                Icon(icon, size: 18, weight: 600, color: muted),
                 const SizedBox(width: 6),
                 Text(
                   '${formatBytes(rate)}/s',
-                  style: theme.textTheme.titleMedium?.merge(_tabular),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600).merge(_tabular),
                 ),
               ],
             ),
@@ -194,7 +194,7 @@ class _TrafficCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               'Total ${formatBytes(total)}',
-              style: theme.textTheme.bodySmall
+              style: theme.textTheme.bodyMedium
                   ?.copyWith(color: muted)
                   .merge(_tabular),
             ),
