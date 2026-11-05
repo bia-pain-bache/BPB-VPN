@@ -83,7 +83,7 @@ class _TorBridgesPageState extends State<TorBridgesPage> {
             ],
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            padding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
             child: FilledButton.icon(
               icon: _loading
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
@@ -113,7 +113,7 @@ class _TorBridgesPageState extends State<TorBridgesPage> {
               ],
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+              padding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
               child: FilledButton.icon(
                 icon: const Icon(Symbols.add_circle_rounded),
                 label: const Text('Install'),

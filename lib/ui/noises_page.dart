@@ -9,6 +9,8 @@ import '../models/settings.dart';
 import '../state/app_state.dart';
 import 'theme.dart';
 
+const _pad = 24.0;
+
 /// Edits the profile's `udpNoises` (or [section]'s: `masque.`, `serverless.`) as cards, like the
 /// "v2ray Noise" section of the BPB panel.
 class NoisesPage extends StatefulWidget {
@@ -34,11 +36,19 @@ class _NoisesPageState extends State<NoisesPage> {
   void initState() {
     super.initState();
     final state = AppScope.read(context);
-    final reset = Range.parse(state.read('${widget.section}udpNoiseReset'), Profile.defaultUdpNoiseReset);
+    final reset = Range.parse(
+      state.read('${widget.section}udpNoiseReset'),
+      Profile.defaultUdpNoiseReset,
+    );
     _resetMin = TextEditingController(text: '${reset.min}');
     _resetMax = TextEditingController(text: '${reset.max}');
-    final noises = state.read('${widget.section}udpNoises') as List? ?? const [];
-    _noises = noises.whereType<Map>().map(UdpNoise.parse).map(_NoiseDraft.from).toList();
+    final noises =
+        state.read('${widget.section}udpNoises') as List? ?? const [];
+    _noises = noises
+        .whereType<Map>()
+        .map(UdpNoise.parse)
+        .map(_NoiseDraft.from)
+        .toList();
     if (_noises.isEmpty) _noises.add(_NoiseDraft.from(_defaultNoise));
   }
 
@@ -52,7 +62,11 @@ class _NoisesPageState extends State<NoisesPage> {
     super.dispose();
   }
 
-  static const _defaultNoise = UdpNoise(type: NoiseType.rand, size: Range(50, 100), count: 5);
+  static const _defaultNoise = UdpNoise(
+    type: NoiseType.rand,
+    size: Range(50, 100),
+    count: 5,
+  );
 
   void _changed() => setState(() => _dirty = true);
 
@@ -70,8 +84,14 @@ class _NoisesPageState extends State<NoisesPage> {
         title: const Text('Delete UDP noise'),
         content: const Text('Are you sure?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -85,13 +105,17 @@ class _NoisesPageState extends State<NoisesPage> {
   void _save() {
     if (!_formKey.currentState!.validate()) return;
     final state = AppScope.read(context);
-    state.write('${widget.section}udpNoises', _noises.map((n) => n.toJson()).toList());
+    state.write(
+      '${widget.section}udpNoises',
+      _noises.map((n) => n.toJson()).toList(),
+    );
     state.write('${widget.section}udpNoiseReset', {
       'min': int.parse(_resetMin.text.trim()),
       'max': int.parse(_resetMax.text.trim()),
     });
     setState(() => _dirty = false);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('UDP noises saved')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('UDP noises saved')));
   }
 
   Future<bool> _confirmDiscard() async {
@@ -102,8 +126,14 @@ class _NoisesPageState extends State<NoisesPage> {
         title: const Text('Discard changes?'),
         content: const Text('Your noise changes have not been saved.'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Keep editing')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Discard')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep editing'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Discard'),
+          ),
         ],
       ),
     );
@@ -125,7 +155,12 @@ class _NoisesPageState extends State<NoisesPage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('UDP noises'),
-          actions: [TextButton(onPressed: _dirty ? _save : null, child: const Text('Save'))],
+          actions: [
+            TextButton(
+              onPressed: _dirty ? _save : null,
+              child: const Text('Save'),
+            ),
+          ],
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _add,
@@ -139,7 +174,11 @@ class _NoisesPageState extends State<NoisesPage> {
             // The reset interval first (it applies to all noises), then a card per noise.
             itemCount: _noises.length + 1,
             itemBuilder: (context, i) => i == 0
-                ? _ResetCard(min: _resetMin, max: _resetMax, onChanged: _changed)
+                ? _ResetCard(
+                    min: _resetMin,
+                    max: _resetMax,
+                    onChanged: _changed,
+                  )
                 : _NoiseCard(
                     key: ObjectKey(_noises[i - 1]),
                     index: i - 1,
@@ -160,24 +199,51 @@ class _ResetCard extends StatelessWidget {
   final TextEditingController max;
   final VoidCallback onChanged;
 
-  const _ResetCard({required this.min, required this.max, required this.onChanged});
+  const _ResetCard({
+    required this.min,
+    required this.max,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
     final digits = [FilteringTextInputFormatter.digitsOnly];
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     // Same layout as the noise cards: a 48 px title row, then the fields.
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
+      shape: roundedShape(
+        kHeroRadius,
+        side: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.75),
+          width: 0.75,
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        padding: const EdgeInsets.fromLTRB(_pad, 8, _pad, _pad),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 16,
           children: [
             SizedBox(
               height: 48,
               child: Align(
                 alignment: AlignmentDirectional.centerStart,
-                child: Text('Reset noise interval (seconds)', style: Theme.of(context).textTheme.titleMedium),
+                child: Row(
+                  spacing: 8,
+                  children: [
+                    Icon(
+                      Symbols.refresh_rounded,
+                      size: 20,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    Text(
+                      'Reset noise interval (s)',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ],
+                ),
               ),
             ),
             Row(
@@ -198,7 +264,15 @@ class _ResetCard extends StatelessWidget {
                     },
                   ),
                 ),
-                const Padding(padding: EdgeInsets.fromLTRB(kRangeDashGap, 16, kRangeDashGap, 0), child: Text('–')),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    kRangeDashGap,
+                    16,
+                    kRangeDashGap,
+                    0,
+                  ),
+                  child: Text('–'),
+                ),
                 Expanded(
                   child: TextFormField(
                     controller: max,
@@ -206,7 +280,9 @@ class _ResetCard extends StatelessWidget {
                     keyboardType: TextInputType.number,
                     inputFormatters: digits,
                     onChanged: (_) => onChanged(),
-                    validator: (v) => (int.tryParse(v?.trim() ?? '') ?? 0) < 1 ? 'At least 1' : null,
+                    validator: (v) => (int.tryParse(v?.trim() ?? '') ?? 0) < 1
+                        ? 'At least 1'
+                        : null,
                   ),
                 ),
               ],
@@ -225,8 +301,13 @@ class _NoiseDraft {
   final TextEditingController delayMin;
   final TextEditingController delayMax;
 
-  _NoiseDraft(this.type, String packet, int count, String delayMin, String delayMax)
-    : packet = TextEditingController(text: packet),
+  _NoiseDraft(
+    this.type,
+    String packet,
+    int count,
+    String delayMin,
+    String delayMax,
+  ) : packet = TextEditingController(text: packet),
       count = TextEditingController(text: '$count'),
       delayMin = TextEditingController(text: delayMin),
       delayMax = TextEditingController(text: delayMax);
@@ -236,7 +317,8 @@ class _NoiseDraft {
   factory _NoiseDraft.from(UdpNoise n) => _NoiseDraft(
     n.type.name,
     switch (n.type) {
-      NoiseType.rand => '${(n.size ?? const Range(50, 100)).min}-${(n.size ?? const Range(50, 100)).max}',
+      NoiseType.rand =>
+        '${(n.size ?? const Range(50, 100)).min}-${(n.size ?? const Range(50, 100)).max}',
       NoiseType.array => (n.bytes ?? const []).join(','),
       _ => n.packet ?? '',
     },
@@ -251,11 +333,19 @@ class _NoiseDraft {
     final range = RegExp(r'^(\d+)-(\d+)$').firstMatch(text);
     return {
       'type': type,
-      if (type == 'rand') 'size': {'min': int.parse(range!.group(1)!), 'max': int.parse(range.group(2)!)},
-      if (type == 'array') 'bytes': text.split(',').map((e) => int.parse(e.trim())).toList(),
+      if (type == 'rand')
+        'size': {
+          'min': int.parse(range!.group(1)!),
+          'max': int.parse(range.group(2)!),
+        },
+      if (type == 'array')
+        'bytes': text.split(',').map((e) => int.parse(e.trim())).toList(),
       if (type != 'rand' && type != 'array') 'packet': text,
       'count': int.parse(count.text.trim()),
-      'delay': {'min': int.parse(delayMin.text.trim()), 'max': int.parse(delayMax.text.trim())},
+      'delay': {
+        'min': int.parse(delayMin.text.trim()),
+        'max': int.parse(delayMax.text.trim()),
+      },
     };
   }
 
@@ -273,7 +363,13 @@ class _NoiseCard extends StatelessWidget {
   final VoidCallback onChanged;
   final VoidCallback? onDelete;
 
-  const _NoiseCard({super.key, required this.index, required this.noise, required this.onChanged, this.onDelete});
+  const _NoiseCard({
+    super.key,
+    required this.index,
+    required this.noise,
+    required this.onChanged,
+    this.onDelete,
+  });
 
   void _generate() {
     noise.packet.text = generateNoisePacket(noise.type);
@@ -283,123 +379,167 @@ class _NoiseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final digits = [FilteringTextInputFormatter.digitsOnly];
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
+      shape: roundedShape(
+        kHeroRadius,
+        side: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.75),
+          width: 0.75,
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
+        padding: const EdgeInsets.fromLTRB(_pad, 8, _pad, _pad),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 16,
           children: [
             Row(
               children: [
-                Expanded(child: Text('Noise ${index + 1}', style: theme.textTheme.titleMedium)),
+                Expanded(
+                  child: Row(
+                    spacing: 8,
+                    children: [
+                      Icon(
+                        Symbols.list_arrow_rounded,
+                        size: 20,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      Text(
+                        'Noise ${index + 1}',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                    ],
+                  ),
+                ),
                 if (onDelete != null)
-                  IconButton(tooltip: 'Delete', icon: const Icon(Symbols.delete_outline_rounded), onPressed: onDelete)
+                  IconButton(
+                    tooltip: 'Delete',
+                    icon: const Icon(Symbols.delete_outline_rounded),
+                    onPressed: onDelete,
+                  )
                 else
                   const SizedBox(height: 48),
               ],
             ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  DropdownButtonFormField<String>(
-                    borderRadius: BorderRadius.circular(kMenuRadius),
-                    initialValue: noise.type,
-                    decoration: const InputDecoration(labelText: 'Mode'),
-                    items: [
-                      for (final e in _NoisesPageState.modes.entries)
-                        DropdownMenuItem(value: e.key, child: Text(e.value)),
-                    ],
-                    onChanged: (v) {
-                      if (v == null || v == noise.type) return;
-                      noise.type = v;
-                      _generate();
-                    },
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DropdownButtonFormField<String>(
+                  borderRadius: BorderRadius.circular(kMenuRadius),
+                  initialValue: noise.type,
+                  decoration: const InputDecoration(labelText: 'Mode'),
+                  items: [
+                    for (final e in _NoisesPageState.modes.entries)
+                      DropdownMenuItem(value: e.key, child: Text(e.value)),
+                  ],
+                  onChanged: (v) {
+                    if (v == null || v == noise.type) return;
+                    noise.type = v;
+                    _generate();
+                  },
+                ),
+                const SizedBox(height: kFieldGap),
+                TextFormField(
+                  controller: noise.packet,
+                  minLines: 1,
+                  maxLines: noise.type == 'exp' ? 4 : 1,
+                  decoration: InputDecoration(
+                    labelText: 'Packet',
+                    helperText: noise.type == 'exp'
+                        ? '<b 0x…> bytes · <r N> random · <rc N> ASCII · <rd N> digits\n'
+                              '<t> timestamp · <c> counter · <n> nonce · N can be a range like 8-16'
+                        : null,
+                    helperMaxLines: 2,
+                    suffixIcon: noise.type == 'exp'
+                        ? PopupMenuButton<String>(
+                            tooltip: 'Presets',
+                            icon: const Icon(Symbols.auto_awesome_rounded),
+                            onSelected: (exp) {
+                              noise.packet.text = exp;
+                              onChanged();
+                            },
+                            itemBuilder: (_) => [
+                              for (final p in noiseExpPresets.entries)
+                                PopupMenuItem(
+                                  value: p.value,
+                                  child: Text(p.key),
+                                ),
+                            ],
+                          )
+                        : IconButton(
+                            tooltip: 'Generate',
+                            icon: const Icon(Symbols.refresh_rounded),
+                            onPressed: _generate,
+                          ),
                   ),
-                  const SizedBox(height: kFieldGap),
-                  TextFormField(
-                    controller: noise.packet,
-                    minLines: 1,
-                    maxLines: noise.type == 'exp' ? 4 : 1,
-                    decoration: InputDecoration(
-                      labelText: 'Packet',
-                      helperText: noise.type == 'exp'
-                          ? '<b 0x…> bytes · <r N> random · <rc N> ASCII · <rd N> digits\n'
-                                '<t> timestamp · <c> counter · <n> nonce · N can be a range like 8-16'
-                          : null,
-                      helperMaxLines: 2,
-                      suffixIcon: noise.type == 'exp'
-                          ? PopupMenuButton<String>(
-                              tooltip: 'Presets',
-                              icon: const Icon(Symbols.auto_awesome_rounded),
-                              onSelected: (exp) {
-                                noise.packet.text = exp;
-                                onChanged();
-                              },
-                              itemBuilder: (_) => [
-                                for (final p in noiseExpPresets.entries)
-                                  PopupMenuItem(value: p.value, child: Text(p.key)),
-                              ],
-                            )
-                          : IconButton(
-                              tooltip: 'Generate',
-                              icon: const Icon(Symbols.refresh_rounded),
-                              onPressed: _generate,
-                            ),
+                  onChanged: (_) => onChanged(),
+                  validator: (v) =>
+                      validateNoisePacket(noise.type, v?.trim() ?? ''),
+                ),
+                const SizedBox(height: kFieldGap),
+                TextFormField(
+                  controller: noise.count,
+                  decoration: const InputDecoration(labelText: 'Count'),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: digits,
+                  onChanged: (_) => onChanged(),
+                  validator: (v) => (int.tryParse(v?.trim() ?? '') ?? 0) < 1
+                      ? 'At least 1'
+                      : null,
+                ),
+                const SizedBox(height: kFieldGap),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: noise.delayMin,
+                        decoration: const InputDecoration(
+                          labelText: 'Delay min',
+                        ),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: digits,
+                        onChanged: (_) => onChanged(),
+                        validator: (v) {
+                          final min = int.tryParse(v?.trim() ?? '') ?? 0;
+                          if (min < 1) return 'At least 1';
+                          final max =
+                              int.tryParse(noise.delayMax.text.trim()) ?? 0;
+                          return min > max ? 'Min > max' : null;
+                        },
+                      ),
                     ),
-                    onChanged: (_) => onChanged(),
-                    validator: (v) => validateNoisePacket(noise.type, v?.trim() ?? ''),
-                  ),
-                  const SizedBox(height: kFieldGap),
-                  TextFormField(
-                    controller: noise.count,
-                    decoration: const InputDecoration(labelText: 'Count'),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: digits,
-                    onChanged: (_) => onChanged(),
-                    validator: (v) => (int.tryParse(v?.trim() ?? '') ?? 0) < 1 ? 'At least 1' : null,
-                  ),
-                  const SizedBox(height: kFieldGap),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: noise.delayMin,
-                          decoration: const InputDecoration(labelText: 'Delay min'),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: digits,
-                          onChanged: (_) => onChanged(),
-                          validator: (v) {
-                            final min = int.tryParse(v?.trim() ?? '') ?? 0;
-                            if (min < 1) return 'At least 1';
-                            final max = int.tryParse(noise.delayMax.text.trim()) ?? 0;
-                            return min > max ? 'Min > max' : null;
-                          },
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        kRangeDashGap,
+                        16,
+                        kRangeDashGap,
+                        0,
+                      ),
+                      child: Text('–'),
+                    ),
+                    Expanded(
+                      child: TextFormField(
+                        controller: noise.delayMax,
+                        decoration: const InputDecoration(
+                          labelText: 'Delay max',
                         ),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: digits,
+                        onChanged: (_) => onChanged(),
+                        validator: (v) =>
+                            (int.tryParse(v?.trim() ?? '') ?? 0) < 1
+                            ? 'At least 1'
+                            : null,
                       ),
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(kRangeDashGap, 16, kRangeDashGap, 0),
-                        child: Text('–'),
-                      ),
-                      Expanded(
-                        child: TextFormField(
-                          controller: noise.delayMax,
-                          decoration: const InputDecoration(labelText: 'Delay max'),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: digits,
-                          onChanged: (_) => onChanged(),
-                          validator: (v) => (int.tryParse(v?.trim() ?? '') ?? 0) < 1 ? 'At least 1' : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),
@@ -410,15 +550,18 @@ class _NoiseCard extends StatelessWidget {
 
 final _random = Random.secure();
 
-List<int> _randBytes(int min, int max) =>
-    List.generate(min + _random.nextInt(max - min + 1), (_) => _random.nextInt(256));
+List<int> _randBytes(int min, int max) => List.generate(
+  min + _random.nextInt(max - min + 1),
+  (_) => _random.nextInt(256),
+);
 
 /// Xray "exp" noise templates that make the first packets look like a common protocol,
 /// so DPI may classify the flow before it sees the WireGuard handshake (like AmneziaWG's
 /// I1-I5 packets). They're extra packets only; the WARP server ignores them.
 const noiseExpPresets = {
   // Long header Initial, version 1, 8-byte DCID, empty SCID and token, ~1200-byte payload.
-  'QUIC Initial': '<b 0xc3><b 0x00000001><b 0x08><r 8><b 0x00><b 0x00><b 0x44d0><r 1232>',
+  'QUIC Initial':
+      '<b 0xc3><b 0x00000001><b 0x08><r 8><b 0x00><b 0x00><b 0x44d0><r 1232>',
   // Standard A query for www.google.com with a random ID.
   'DNS query': '<r 2><b 0x01000001000000000000><b 0x0377777706676f6f676c6503636f6d00><b 0x00010001>',
   // Binding request: type, length 0, magic cookie, random transaction ID.
@@ -433,11 +576,15 @@ String generateNoisePacket(String mode) {
     case 'base64':
       return base64.encode(_randBytes(32, 64));
     case 'hex':
-      return _randBytes(32, 64).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+      return _randBytes(
+        32,
+        64,
+      ).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
     case 'array':
       return _randBytes(32, 64).join(',');
     case 'str':
-      const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      const charset =
+          'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
       return _randBytes(32, 64).map((b) => charset[b % charset.length]).join();
     default:
       return '50-100';
@@ -458,9 +605,13 @@ String? validateNoisePacket(String mode, String packet) {
     case 'rand':
       final match = RegExp(r'^(\d+)-(\d+)$').firstMatch(packet);
       if (match == null) return 'Use a range like 10-30';
-      return int.parse(match.group(1)!) > int.parse(match.group(2)!) ? 'Min cannot be bigger than max' : null;
+      return int.parse(match.group(1)!) > int.parse(match.group(2)!)
+          ? 'Min cannot be bigger than max'
+          : null;
     case 'hex':
-      return RegExp(r'^(?:[0-9a-fA-F]{2})+$').hasMatch(packet) ? null : 'Even-length hex (0-9, a-f)';
+      return RegExp(r'^(?:[0-9a-fA-F]{2})+$').hasMatch(packet)
+          ? null
+          : 'Even-length hex (0-9, a-f)';
     case 'array':
       final ok = packet.split(',').every((n) {
         final v = int.tryParse(n.trim());
@@ -490,20 +641,25 @@ String? validateNoiseExp(String exp) {
     switch (key) {
       case 'b':
         var hex = arg.replaceAll(RegExp(r'\s'), '');
-        if (hex.startsWith('0x') || hex.startsWith('0X')) hex = hex.substring(2);
-        if (!RegExp(r'^(?:[0-9a-fA-F]{2})+$').hasMatch(hex)) return '<b> needs even-length hex, like <b 0x1a2b>';
+        if (hex.startsWith('0x') || hex.startsWith('0X'))
+          hex = hex.substring(2);
+        if (!RegExp(r'^(?:[0-9a-fA-F]{2})+$').hasMatch(hex))
+          return '<b> needs even-length hex, like <b 0x1a2b>';
       case 'r' || 'rc' || 'rd':
         final range = RegExp(r'^(\d+)(?:-(\d+))?$').firstMatch(arg);
-        if (range == null) return '<$key> needs a size, like <$key 16> or <$key 8-32>';
+        if (range == null)
+          return '<$key> needs a size, like <$key 16> or <$key 8-32>';
         final lo = int.parse(range.group(1)!);
         final hi = int.parse(range.group(2) ?? range.group(1)!);
-        if (hi < lo || hi > 65535) return 'Size in <$key> must be 0-65535, low to high';
+        if (hi < lo || hi > 65535)
+          return 'Size in <$key> must be 0-65535, low to high';
       case 't' || 'c' || 'n':
         if (arg.isNotEmpty) return '<$key> takes no value';
       default:
         return 'Unknown <$key>; use b, r, rc, rd, t, c or n';
     }
   }
-  if (exp.substring(last).trim().isNotEmpty) return 'Unexpected text: ${exp.substring(last).trim()}';
+  if (exp.substring(last).trim().isNotEmpty)
+    return 'Unexpected text: ${exp.substring(last).trim()}';
   return segments == 0 ? 'Add at least one <…> part' : null;
 }

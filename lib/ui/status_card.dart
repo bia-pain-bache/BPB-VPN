@@ -176,6 +176,7 @@ class _Metrics extends StatelessWidget {
     // devices use it with port 10808 for the SOCKS/HTTP proxy.
     final lanIp = state.lanIp;
     final lan = _Metric(
+      icon: Symbols.lan_rounded,
       label: 'LAN IP',
       value: Text(lanIp ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
       tooltip: 'Tap to copy',
@@ -193,6 +194,7 @@ class _Metrics extends StatelessWidget {
           children: [
             Expanded(
               child: _Metric(
+                icon: Symbols.timer_rounded,
                 label: 'Duration',
                 value: Text(
                   state.isConnected && since != null
@@ -203,6 +205,7 @@ class _Metrics extends StatelessWidget {
             ),
             Expanded(
               child: _Metric(
+                icon: Symbols.speed_rounded,
                 label: 'Ping',
                 value: state.isConnected
                     ? const _PingButton()
@@ -219,6 +222,7 @@ class _Metrics extends StatelessWidget {
               ? [
                   Expanded(
                     child: _Metric(
+                      icon: Symbols.location_on_rounded,
                       label: 'My IP',
                       value: ip(ips?.other),
                       onTap: refreshIps,
@@ -226,6 +230,7 @@ class _Metrics extends StatelessWidget {
                   ),
                   Expanded(
                     child: _Metric(
+                      icon: Symbols.location_on_rounded,
                       label: 'My IP Cloudflare',
                       value: ip(ips?.cloudflare),
                       onTap: refreshIps,
@@ -235,6 +240,7 @@ class _Metrics extends StatelessWidget {
               : [
                   Expanded(
                     child: _Metric(
+                      icon: Symbols.location_on_rounded,
                       label: 'My IP',
                       value: ip(ips?.other ?? ips?.cloudflare),
                       onTap: refreshIps,
@@ -251,6 +257,7 @@ class _Metrics extends StatelessWidget {
 }
 
 class _Metric extends StatelessWidget {
+  final IconData icon;
   final String label;
   final Widget value;
 
@@ -259,6 +266,7 @@ class _Metric extends StatelessWidget {
   final String tooltip;
 
   const _Metric({
+    required this.icon,
     required this.label,
     required this.value,
     this.onTap,
@@ -271,11 +279,23 @@ class _Metric extends StatelessWidget {
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: theme.colorScheme.onSurfaceVariant,
+              weight: 500,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 2),
         DefaultTextStyle.merge(

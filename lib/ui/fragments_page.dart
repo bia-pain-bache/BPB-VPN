@@ -6,6 +6,8 @@ import '../models/settings.dart';
 import '../state/app_state.dart';
 import 'theme.dart';
 
+const _pad = 24.0;
+
 /// Edits the fragment cards (profile `fragments`, or [section]'s: `masque.`, `serverless.`). Each
 /// card is one Xray finalmask "fragment" entry.
 class FragmentsPage extends StatefulWidget {
@@ -32,9 +34,16 @@ class _FragmentsPageState extends State<FragmentsPage> {
   @override
   void initState() {
     super.initState();
-    final fragments = AppScope.read(context).read('${widget.section}fragments') as List? ?? const [];
-    _fragments = fragments.whereType<Map>().map(Fragment.parse).map(_FragmentDraft.from).toList();
-    if (_fragments.isEmpty) _fragments.add(_FragmentDraft.from(const Fragment()));
+    final fragments =
+        AppScope.read(context).read('${widget.section}fragments') as List? ??
+        const [];
+    _fragments = fragments
+        .whereType<Map>()
+        .map(Fragment.parse)
+        .map(_FragmentDraft.from)
+        .toList();
+    if (_fragments.isEmpty)
+      _fragments.add(_FragmentDraft.from(const Fragment()));
   }
 
   @override
@@ -64,10 +73,13 @@ class _FragmentsPageState extends State<FragmentsPage> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
-    AppScope.read(context)
-        .write('${widget.section}fragments', _fragments.map((f) => f.toJson()).toList());
+    AppScope.read(context).write(
+      '${widget.section}fragments',
+      _fragments.map((f) => f.toJson()).toList(),
+    );
     setState(() => _dirty = false);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fragments saved')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Fragments saved')));
   }
 
   Future<bool> _confirm(String title, String body, String action) async {
@@ -77,8 +89,14 @@ class _FragmentsPageState extends State<FragmentsPage> {
         title: Text(title),
         content: Text(body),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(action)),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(action),
+          ),
         ],
       ),
     );
@@ -92,7 +110,11 @@ class _FragmentsPageState extends State<FragmentsPage> {
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final navigator = Navigator.of(context);
-        if (await _confirm('Discard changes?', 'Your fragment changes have not been saved.', 'Discard')) {
+        if (await _confirm(
+          'Discard changes?',
+          'Your fragment changes have not been saved.',
+          'Discard',
+        )) {
           _dirty = false;
           navigator.pop();
         }
@@ -100,7 +122,12 @@ class _FragmentsPageState extends State<FragmentsPage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Fragments'),
-          actions: [TextButton(onPressed: _dirty ? _save : null, child: const Text('Save'))],
+          actions: [
+            TextButton(
+              onPressed: _dirty ? _save : null,
+              child: const Text('Save'),
+            ),
+          ],
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _add,
@@ -136,12 +163,16 @@ class _RangeDraft {
     : min = TextEditingController(text: minValue),
       max = TextEditingController(text: maxValue);
 
-  factory _RangeDraft.of(Range? r) => r == null ? _RangeDraft('', '') : _RangeDraft('${r.min}', '${r.max}');
+  factory _RangeDraft.of(Range? r) =>
+      r == null ? _RangeDraft('', '') : _RangeDraft('${r.min}', '${r.max}');
 
   bool get isEmpty => min.text.trim().isEmpty && max.text.trim().isEmpty;
 
   /// The range as stored (the form validates the numbers before saving).
-  Map<String, dynamic> toJson() => {'min': int.parse(min.text.trim()), 'max': int.parse(max.text.trim())};
+  Map<String, dynamic> toJson() => {
+    'min': int.parse(min.text.trim()),
+    'max': int.parse(max.text.trim()),
+  };
 
   void set(Range r) {
     min.text = '${r.min}';
@@ -165,10 +196,12 @@ class _FragmentDraft {
   factory _FragmentDraft.from(Fragment f) => _FragmentDraft(
     f.packets,
     [
-      for (final r in f.lengths.isEmpty ? const [Range(100, 200)] : f.lengths) _RangeDraft.of(r),
+      for (final r in f.lengths.isEmpty ? const [Range(100, 200)] : f.lengths)
+        _RangeDraft.of(r),
     ],
     [
-      for (final r in f.delays.isEmpty ? const [Range.single(1)] : f.delays) _RangeDraft.of(r),
+      for (final r in f.delays.isEmpty ? const [Range.single(1)] : f.delays)
+        _RangeDraft.of(r),
     ],
     _RangeDraft.of(f.maxSplit),
   );
@@ -206,7 +239,13 @@ class _FragmentCard extends StatefulWidget {
   final VoidCallback onChanged;
   final VoidCallback? onDelete;
 
-  const _FragmentCard({super.key, required this.index, required this.fragment, required this.onChanged, this.onDelete});
+  const _FragmentCard({
+    super.key,
+    required this.index,
+    required this.fragment,
+    required this.onChanged,
+    this.onDelete,
+  });
 
   @override
   State<_FragmentCard> createState() => _FragmentCardState();
@@ -223,16 +262,41 @@ class _FragmentCardState extends State<_FragmentCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
+      shape: roundedShape(
+        kHeroRadius,
+        side: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.75),
+          width: 0.75,
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
+        padding: const EdgeInsets.fromLTRB(_pad, 8, _pad, _pad),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 16,
           children: [
             Row(
               children: [
-                Expanded(child: Text('Fragment ${widget.index + 1}', style: theme.textTheme.titleMedium)),
+                Expanded(
+                  child: Row(
+                    spacing: 8,
+                    children: [
+                      Icon(
+                        Symbols.list_arrow_rounded,
+                        size: 20,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      Text(
+                        'Fragment ${widget.index + 1}',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                    ],
+                  ),
+                ),
                 PopupMenuButton<String>(
                   tooltip: 'Preset',
                   icon: const Icon(Symbols.tune_rounded),
@@ -242,7 +306,12 @@ class _FragmentCardState extends State<_FragmentCard> {
                   },
                   itemBuilder: (_) => [
                     for (final e in _FragmentsPageState.presets.entries)
-                      PopupMenuItem(value: e.key, child: Text('${e.key}  ·  ${e.value.$1} / ${e.value.$2} ms')),
+                      PopupMenuItem(
+                        value: e.key,
+                        child: Text(
+                          '${e.key}  ·  ${e.value.$1} / ${e.value.$2} ms',
+                        ),
+                      ),
                   ],
                 ),
                 if (widget.onDelete != null)
@@ -253,47 +322,48 @@ class _FragmentCardState extends State<_FragmentCard> {
                   ),
               ],
             ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Fixed presets: the TLS ClientHello or the first 1, 2, 3 or 5 packets.
-                  DropdownButtonFormField<FragmentPackets>(
-                    borderRadius: BorderRadius.circular(kMenuRadius),
-                    initialValue: f.packets,
-                    decoration: const InputDecoration(labelText: 'Packets'),
-                    items: [for (final p in FragmentPackets.values) DropdownMenuItem(value: p, child: Text(p.label))],
-                    onChanged: (v) => _update(() => f.packets = v ?? FragmentPackets.tlsHello),
-                  ),
-                  _RangeList(
-                    title: 'Lengths',
-                    addLabel: 'Add length',
-                    itemLabel: 'Length',
-                    ranges: f.lengths,
-                    minValue: 0,
-                    onChanged: () => _update(() {}),
-                  ),
-                  _RangeList(
-                    title: 'Delays (ms)',
-                    addLabel: 'Add delay',
-                    itemLabel: 'Delay',
-                    ranges: f.delays,
-                    minValue: 0,
-                    onChanged: () => _update(() {}),
-                  ),
-                  const SizedBox(height: kFieldGap),
-                  Text('Max split', style: theme.textTheme.labelLarge),
-                  const SizedBox(height: 8),
-                  _RangeRow(
-                    range: f.maxSplit,
-                    label: 'Max split',
-                    minValue: 0,
-                    optional: true,
-                    onChanged: widget.onChanged,
-                  ),
-                ],
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Fixed presets: the TLS ClientHello or the first 1, 2, 3 or 5 packets.
+                DropdownButtonFormField<FragmentPackets>(
+                  borderRadius: BorderRadius.circular(kMenuRadius),
+                  initialValue: f.packets,
+                  decoration: const InputDecoration(labelText: 'Packets'),
+                  items: [
+                    for (final p in FragmentPackets.values)
+                      DropdownMenuItem(value: p, child: Text(p.label)),
+                  ],
+                  onChanged: (v) =>
+                      _update(() => f.packets = v ?? FragmentPackets.tlsHello),
+                ),
+                _RangeList(
+                  title: 'Lengths',
+                  addLabel: 'Add length',
+                  itemLabel: 'Length',
+                  ranges: f.lengths,
+                  minValue: 0,
+                  onChanged: () => _update(() {}),
+                ),
+                _RangeList(
+                  title: 'Delays (ms)',
+                  addLabel: 'Add delay',
+                  itemLabel: 'Delay',
+                  ranges: f.delays,
+                  minValue: 0,
+                  onChanged: () => _update(() {}),
+                ),
+                const SizedBox(height: kFieldGap),
+                Text('Max split', style: theme.textTheme.labelLarge),
+                const SizedBox(height: 8),
+                _RangeRow(
+                  range: f.maxSplit,
+                  label: 'Max split',
+                  minValue: 0,
+                  optional: true,
+                  onChanged: widget.onChanged,
+                ),
+              ],
             ),
           ],
         ),
@@ -330,7 +400,9 @@ class _RangeList extends StatelessWidget {
         const SizedBox(height: kFieldGap),
         Row(
           children: [
-            Expanded(child: Text(title, style: Theme.of(context).textTheme.labelLarge)),
+            Expanded(
+              child: Text(title, style: Theme.of(context).textTheme.labelLarge),
+            ),
             TextButton.icon(
               onPressed: () {
                 final last = ranges.last;
@@ -402,7 +474,8 @@ class _RangeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final digits = [FilteringTextInputFormatter.digitsOnly];
-    InputDecoration deco(String text) => InputDecoration(labelText: text, hintText: optional ? 'None' : null);
+    InputDecoration deco(String text) =>
+        InputDecoration(labelText: text, hintText: optional ? 'None' : null);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -416,7 +489,10 @@ class _RangeRow extends StatelessWidget {
             validator: _validateMin,
           ),
         ),
-        const Padding(padding: EdgeInsets.fromLTRB(kRangeDashGap, 16, kRangeDashGap, 0), child: Text('–')),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(kRangeDashGap, 16, kRangeDashGap, 0),
+          child: Text('–'),
+        ),
         Expanded(
           child: TextFormField(
             controller: range.max,
@@ -428,7 +504,11 @@ class _RangeRow extends StatelessWidget {
           ),
         ),
         if (onRemove != null)
-          IconButton(tooltip: 'Remove', icon: const Icon(Symbols.remove_circle_outline_rounded), onPressed: onRemove),
+          IconButton(
+            tooltip: 'Remove',
+            icon: const Icon(Symbols.remove_circle_outline_rounded),
+            onPressed: onRemove,
+          ),
       ],
     );
   }
