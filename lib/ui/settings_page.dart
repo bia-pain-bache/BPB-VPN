@@ -94,6 +94,11 @@ class SettingsPage extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const ChainProxiesPage()),
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SettingsCard(
+            children: [
               const TextPref(
                 'general.localDns',
                 'Local DNS',
@@ -106,7 +111,7 @@ class SettingsPage extends StatelessWidget {
               ),
               const TextPref(
                 'general.antiSanctionDns',
-                'Anti-Sanction DNS',
+                'Anti Sanction DNS',
                 icon: Symbols.account_circle_off_rounded,
                 help:
                     'Resolves the sanctioned domains so they work over a direct connection. '
@@ -120,6 +125,11 @@ class SettingsPage extends StatelessWidget {
                 icon: Symbols.dns_rounded,
                 subtitle: 'Faster but may not work with some apps',
               ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SettingsCard(
+            children: [
               const SwitchPref(
                 'general.enableIpv6',
                 'IPv6 connection',
@@ -128,9 +138,9 @@ class SettingsPage extends StatelessWidget {
               ),
               const SwitchPref(
                 'device.lanSharing.enabled',
-                'Allow LAN connections',
+                'Allow LAN connection',
                 icon: Symbols.lan_rounded,
-                subtitle: 'Enable a Socks or HTTP proxy on port 10808',
+                subtitle: 'Enable a Socks, HTTP proxy on port 10808',
               ),
               if (d.lanSharing) ...[
                 const TextPref(
@@ -162,7 +172,8 @@ class SettingsPage extends StatelessWidget {
                         'device.appendHttpProxy',
                         'Add HTTP proxy to VPN',
                         icon: Symbols.http_rounded,
-                        subtitle: 'Use HTTP proxy directly for supported apps like browsers',
+                        subtitle:
+                            'Use proxy directly for supported apps, browsers',
                       )
                     : const SizedBox.shrink(),
               ),
@@ -627,7 +638,7 @@ class _ThemeModeTile extends StatelessWidget {
             title: Text('Theme mode'),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.only(bottom: 16),
             child: Center(
               child: SegmentedButton<ThemeMode>(
                 showSelectedIcon: false,
@@ -665,43 +676,45 @@ class _ThemeColorTile extends StatelessWidget {
             title: Text('Theme color'),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(56, 0, 16, 16),
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                for (final c in ThemeColor.values)
-                  Tooltip(
-                    message: c.label,
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () => state.setThemeColor(c),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: c.seed,
-                          // Ring around the selected colour.
-                          border: Border.all(
-                            color: c == selected
-                                ? scheme.onSurface
-                                : Colors.transparent,
-                            width: 2.5,
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Center(
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (final c in ThemeColor.values)
+                    Tooltip(
+                      message: c.label,
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: () => state.setThemeColor(c),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: c.seed,
+                            // Ring around the selected colour.
+                            border: Border.all(
+                              color: c == selected
+                                  ? scheme.onSurface
+                                  : Colors.transparent,
+                              width: 2.5,
+                            ),
                           ),
+                          child: c == selected
+                              ? const Icon(
+                                  Symbols.check_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                )
+                              : null,
                         ),
-                        child: c == selected
-                            ? const Icon(
-                                Symbols.check_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              )
-                            : null,
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ],

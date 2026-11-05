@@ -78,7 +78,13 @@ class _StatusCardState extends State<StatusCard> {
       margin: const EdgeInsets.symmetric(horizontal: 12),
       color: scheme.surfaceContainer,
       elevation: 0,
-      shape: roundedShape(kHeroRadius),
+      shape: roundedShape(
+        kHeroRadius,
+        side: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.75),
+          width: 0.75,
+        ),
+      ),
       child: Stack(
         // Let the button's shadow spill past the card edge instead of being cut off.
         clipBehavior: Clip.none,

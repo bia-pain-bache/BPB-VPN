@@ -255,8 +255,12 @@ class SettingsCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: ListTileTheme.merge(
-          contentPadding: const EdgeInsets.symmetric(vertical: 6,horizontal: 12),
-          minVerticalPadding: 4,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 10,
+          ),
+          minTileHeight: 0,
+          minVerticalPadding: 10,
           child: Column(
             children: [
               for (final (index, child) in children.indexed) ...[

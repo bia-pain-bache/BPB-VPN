@@ -19,19 +19,25 @@ class ConnectionCard extends StatelessWidget {
 
   /// What the exit carries: the worker relays only TCP, Tor too; WARP, MASQUE and Psiphon also
   /// UDP; the chain proxy depends on its protocol ([ChainInfo.carries]).
-  static List<String> _transports(ExitNode node, ConnectionMode mode, {required ChainProxy? chain}) => switch (node) {
+  static List<String> _transports(
+    ExitNode node,
+    ConnectionMode mode, {
+    required ChainProxy? chain,
+  }) => switch (node) {
     ExitNode.worker => switch (mode) {
       ConnectionMode.worker => const ['TCP'],
       ConnectionMode.warp || ConnectionMode.masque => const ['TCP', 'UDP'],
       _ => const [],
     },
-    ExitNode.chain => chain == null ? const [] : ChainInfo.of(chain.link)?.carries ?? const [],
+    ExitNode.chain =>
+      chain == null ? const [] : ChainInfo.of(chain.link)?.carries ?? const [],
     ExitNode.psiphon => const ['TCP', 'UDP'],
     ExitNode.tor => const ['TCP'],
   };
 
-  static String _regionLabel(String code) =>
-      code.isEmpty ? 'Fastest' : '${countryFlag(code)} ${exitRegions[code] ?? code}';
+  static String _regionLabel(String code) => code.isEmpty
+      ? 'Fastest'
+      : '${countryFlag(code)} ${exitRegions[code] ?? code}';
 
   @override
   Widget build(BuildContext context) {
@@ -40,17 +46,32 @@ class ConnectionCard extends StatelessWidget {
     final scheme = theme.colorScheme;
     final exit = state.exitNode;
     // The Psiphon and Tor types have no exit node to choose: only the region can change.
-    final hasExitNode = state.mode != ConnectionMode.psiphon && state.mode != ConnectionMode.tor;
+    final hasExitNode =
+        state.mode != ConnectionMode.psiphon &&
+        state.mode != ConnectionMode.tor;
     final nodes = switch (state.mode) {
-      ConnectionMode.serverless => [ExitNode.worker, ExitNode.psiphon, ExitNode.tor],
+      ConnectionMode.serverless => [
+        ExitNode.worker,
+        ExitNode.psiphon,
+        ExitNode.tor,
+      ],
       // The chain proxy is an exit node once there's one the type can carry (Settings → Chain proxies).
-      _ => [for (final n in ExitNode.values) if (n != ExitNode.chain || state.usableChains.isNotEmpty) n],
+      _ => [
+        for (final n in ExitNode.values)
+          if (n != ExitNode.chain || state.usableChains.isNotEmpty) n,
+      ],
     };
     final chain = state.exitChain;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12),
-      shape: roundedShape(kCardRadius),
+      shape: roundedShape(
+        kCardRadius,
+        side: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.75),
+          width: 0.75,
+        ),
+      ),
       color: scheme.surfaceContainer,
       elevation: 0,
       child: Padding(
@@ -58,14 +79,22 @@ class ConnectionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _Row(icon: Symbols.category_rounded, label: 'Connection', selector: _TypeSelector()),
+            const _Row(
+              icon: Symbols.category_rounded,
+              label: 'Connection',
+              selector: _TypeSelector(),
+            ),
             // The variant (Worker, WARP, MASQUE), Serverless's mode or Tor's bridges.
             AnimatedSize(
               duration: _rowAnimation,
               curve: Curves.easeInOut,
               alignment: Alignment.topCenter,
               child: state.hasModeOption
-                  ? const _Row(icon: Symbols.tune_rounded, label: 'Mode', selector: _ModeSelector())
+                  ? const _Row(
+                      icon: Symbols.tune_rounded,
+                      label: 'Mode',
+                      selector: _ModeSelector(),
+                    )
                   : const SizedBox(width: double.infinity),
             ),
             AnimatedSize(
@@ -123,7 +152,8 @@ class ConnectionCard extends StatelessWidget {
                         values: state.usableChains,
                         selected: chain,
                         label: (c) => c.name,
-                        subtitleBadges: (c) => ChainInfo.of(c.link)?.tags ?? const [],
+                        subtitleBadges: (c) =>
+                            ChainInfo.of(c.link)?.tags ?? const [],
                         onSelected: state.setExitChain,
                         enabled: !state.isBusy && state.usableChains.length > 1,
                       ),
@@ -153,7 +183,12 @@ class _Row extends StatelessWidget {
         children: [
           Icon(icon, size: 22, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 8),
-          Text(label, style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          Text(
+            label,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
           const Spacer(),
           selector,
         ],
@@ -216,7 +251,9 @@ class _ModeSelector extends StatelessWidget {
         selected: state.device.torBridge,
         label: (v) {
           final count = state.profile.tor.bridges.length;
-          return v == 'custom' && count > 0 ? 'Custom bridges ($count)' : torBridges[v] ?? v;
+          return v == 'custom' && count > 0
+              ? 'Custom bridges ($count)'
+              : torBridges[v] ?? v;
         },
         onSelected: state.setTorBridge,
         enabled: !state.isBusy,

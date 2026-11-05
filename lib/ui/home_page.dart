@@ -72,13 +72,13 @@ class HomePage extends StatelessWidget {
           child: Column(
             children: [
               if (state.needsReconnect) const _ReconnectBanner(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               const ConnectionCard(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               const StatusCard(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               const _TrafficRow(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               // Worker requests only matter for the types that use the worker (Worker).
               if (state.worker != null && state.mode.needsWorker)
                 const _UsageCard(),
@@ -96,9 +96,17 @@ class _ReconnectBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Card(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      shape: roundedShape(kCardRadius),
+      shape: roundedShape(
+        kCardRadius,
+        side: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.75),
+          width: 0.75,
+        ),
+      ),
       color: Theme.of(context).colorScheme.surfaceContainer,
       elevation: 0,
       child: ListTile(
@@ -140,7 +148,7 @@ class _TrafficRow extends StatelessWidget {
                   total: state.totalDown,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: _TrafficCard(
                   icon: Symbols.arrow_upward_rounded,
@@ -170,9 +178,16 @@ class _TrafficCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final muted = theme.colorScheme.onSurfaceVariant;
+    final scheme = theme.colorScheme;
     return Card(
       margin: EdgeInsets.zero,
-      shape: roundedShape(kCardRadius),
+      shape: roundedShape(
+        kCardRadius,
+        side: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.75),
+          width: 0.75,
+        ),
+      ),
       color: theme.colorScheme.surfaceContainer,
       elevation: 0,
       child: Padding(
@@ -186,7 +201,9 @@ class _TrafficCard extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   '${formatBytes(rate)}/s',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600).merge(_tabular),
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600)
+                      .merge(_tabular),
                 ),
               ],
             ),
@@ -223,9 +240,16 @@ class _InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12),
-      shape: roundedShape(kCardRadius),
+      shape: roundedShape(
+        kCardRadius,
+        side: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.75),
+          width: 0.75,
+        ),
+      ),
       color: theme.colorScheme.surfaceContainer,
       elevation: 0,
       child: Padding(

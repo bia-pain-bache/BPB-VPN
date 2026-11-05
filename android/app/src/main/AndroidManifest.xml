@@ -12,7 +12,7 @@
         tools:ignore="QueryAllPackagesPermission" />
 
     <application
-        android:label="BPB"
+        android:label="${applicationLabel}"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"

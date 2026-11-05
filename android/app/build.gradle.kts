@@ -33,6 +33,7 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["applicationLabel"] = "BPB"
     }
 
     signingConfigs {
@@ -48,6 +49,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            if (project.findProperty("dev") == "true") {
+                applicationIdSuffix = ".dev"
+                manifestPlaceholders["applicationLabel"] = "BPB Dev"
+            }
+        }
         release {
             // Falls back to the debug key on machines without key.properties.
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
