@@ -265,7 +265,7 @@ class _FragmentCardState extends State<_FragmentCard> {
     final scheme = theme.colorScheme;
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.symmetric(vertical: 12),
       shape: roundedShape(
         kHeroRadius,
         side: BorderSide(

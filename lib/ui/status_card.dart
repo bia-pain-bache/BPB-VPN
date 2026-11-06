@@ -176,7 +176,7 @@ class _Metrics extends StatelessWidget {
     // devices use it with port 10808 for the SOCKS/HTTP proxy.
     final lanIp = state.lanIp;
     final lan = _Metric(
-      icon: Symbols.lan_rounded,
+      icon: Symbols.wifi_rounded,
       label: 'LAN IP',
       value: Text(lanIp ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
       tooltip: 'Tap to copy',

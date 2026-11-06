@@ -1175,6 +1175,7 @@ class _DeploymentTile extends StatelessWidget {
                             RadioListTile<WorkerType>(
                               value: d.type,
                               title: Text(d.type.label),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                             ),
                         ],
                       ),

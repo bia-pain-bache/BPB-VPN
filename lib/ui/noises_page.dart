@@ -212,7 +212,7 @@ class _ResetCard extends StatelessWidget {
     final scheme = theme.colorScheme;
     // Same layout as the noise cards: a 48 px title row, then the fields.
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.only(bottom: 24),
       shape: roundedShape(
         kHeroRadius,
         side: BorderSide(
@@ -383,7 +383,7 @@ class _NoiseCard extends StatelessWidget {
     final digits = [FilteringTextInputFormatter.digitsOnly];
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.symmetric(vertical: 12),
       shape: roundedShape(
         kHeroRadius,
         side: BorderSide(

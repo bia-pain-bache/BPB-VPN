@@ -478,8 +478,7 @@ class ChoicePref extends StatelessWidget {
                       RadioListTile<String>(
                         value: e.key,
                         title: _labelled(context, e.key, Text(e.value)),
-                        // dense: true,
-                        // visualDensity: VisualDensity.compact,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16),
                       ),
                   ],
                 ),
@@ -557,7 +556,6 @@ class _MultiSelectDialogState extends State<_MultiSelectDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.title),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -569,6 +567,7 @@ class _MultiSelectDialogState extends State<_MultiSelectDialog> {
                 onChanged: (v) => setState(
                   () => v == true ? _selected.add(o) : _selected.remove(o),
                 ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               ),
           ],
         ),

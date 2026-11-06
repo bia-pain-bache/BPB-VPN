@@ -112,7 +112,7 @@ class ChainProxiesPage extends StatelessWidget {
           // A card per config.
           for (final c in chains)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 12),
               child: SettingsCard(children: [_ChainTile(chain: c)]),
             ),
         ],
