@@ -108,7 +108,7 @@ class SettingsPage extends StatelessWidget {
                 hint: 'IP, tcp://IP or localhost',
                 help:
                     'Resolves outbound domains and bypass routing rules. '
-                    'It can be an IP (UDP DNS), tcp://IP (TCP DNS) or localhost (use system DNS).',
+                    'It can be an UDP DNS, TCP DNS or "localhost" to use system DNS.',
                 validator: validateLocalDns,
               ),
               const TextPref(
@@ -118,7 +118,7 @@ class SettingsPage extends StatelessWidget {
                 help:
                     'Resolves the sanctioned domains so they work over a direct connection. '
                     'This only applies to Serverless, WARP and MASQUE connections when Exit node is set to Default. '
-                    'It can be an IP (UDP DNS), tcp://host, quic://host or https://host/dns-query.',
+                    'It can be UDP DNS, TCP DNS, DoQ or DoH.',
                 validator: validateSanctionDns,
               ),
               const SwitchPref(
@@ -212,7 +212,7 @@ class SettingsPage extends StatelessWidget {
                 'vless.remoteDns.server',
                 'Remote DNS',
                 icon: Symbols.outbound_rounded,
-                help: 'Resolves foreign domains and can be a DoH or TCP DNS server.',
+                help: 'Resolves foreign domains for routing and can be a DoH or TCP DNS.',
                 validator: validateRemoteDns,
               ),
               const ListPref(
@@ -220,7 +220,7 @@ class SettingsPage extends StatelessWidget {
                 'Clean IPs or domains',
                 icon: Symbols.list_arrow_rounded,
                 hint: 'www.speedtest.net\n104.16.1.1\n2606:4700::6810:84e5',
-                help: 'Clean Cloudflare IPs or domains on your ISP.',
+                help: 'Set clean Cloudflare IPs or domains to boost connection speed.',
                 itemValidator: validateHost,
               ),
               const MultiIntPref(
@@ -350,7 +350,7 @@ class SettingsPage extends StatelessWidget {
                 'Remote DNS',
                 icon: Symbols.outbound_rounded,
                 hint: '1.1.1.1',
-                help: 'It can be an IP (UDP DNS), tcp://host or https://host/dns-query.',
+                help: 'It can be a UDP DNS, TCP DNS or DoH.',
                 validator: validateTunnelDns,
               ),
               const ListPref(
@@ -410,7 +410,7 @@ class SettingsPage extends StatelessWidget {
                 'Remote DNS',
                 icon: Symbols.outbound_rounded,
                 hint: '1.1.1.1',
-                help: 'It can be an IP (UDP DNS), tcp://host or https://host/dns-query.',
+                help: 'It can be an UDP DNS, TCP DNS or DoH.',
                 validator: validateTunnelDns,
               ),
               const ListPref(

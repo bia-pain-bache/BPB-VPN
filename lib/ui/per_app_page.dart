@@ -35,12 +35,15 @@ class _PerAppPageState extends State<PerAppPage> {
         actions: [
           IconButton(
             tooltip: _showSystem ? 'Hide system apps' : 'Show system apps',
-            icon: Icon(_showSystem ? Symbols.android_rounded : Symbols.apps_rounded),
+            icon: Icon(
+              _showSystem ? Symbols.android_rounded : Symbols.apps_rounded,
+            ),
             onPressed: () => setState(() => _showSystem = !_showSystem),
           ),
         ],
       ),
       body: Column(
+        spacing: 10,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -48,9 +51,18 @@ class _PerAppPageState extends State<PerAppPage> {
               initialSelection: mode,
               expandedInsets: EdgeInsets.zero,
               dropdownMenuEntries: const [
-                DropdownMenuEntry(value: PerAppMode.off, label: 'Proxy all apps'),
-                DropdownMenuEntry(value: PerAppMode.include, label: 'Proxy selected apps'),
-                DropdownMenuEntry(value: PerAppMode.exclude, label: 'Exclude selected apps'),
+                DropdownMenuEntry(
+                  value: PerAppMode.off,
+                  label: 'Proxy all apps',
+                ),
+                DropdownMenuEntry(
+                  value: PerAppMode.include,
+                  label: 'Proxy selected apps',
+                ),
+                DropdownMenuEntry(
+                  value: PerAppMode.exclude,
+                  label: 'Exclude selected apps',
+                ),
               ],
               onSelected: (v) {
                 if (v != null) state.write('device.perAppProxy.mode', v.name);
@@ -73,11 +85,20 @@ class _PerAppPageState extends State<PerAppPage> {
             child: FutureBuilder<List<InstalledApp>>(
               future: _apps,
               builder: (context, snapshot) {
-                if (snapshot.hasError) return Center(child: Text('Could not list apps: ${snapshot.error}'));
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                if (snapshot.hasError)
+                  return Center(
+                    child: Text('Could not list apps: ${snapshot.error}'),
+                  );
+                if (!snapshot.hasData)
+                  return const Center(child: CircularProgressIndicator());
                 final apps =
                     snapshot.data!
-                        .where((a) => _showSystem || !a.isSystem || selected.contains(a.packageName))
+                        .where(
+                          (a) =>
+                              _showSystem ||
+                              !a.isSystem ||
+                              selected.contains(a.packageName),
+                        )
                         .where(
                           (a) =>
                               _query.isEmpty ||
@@ -89,7 +110,11 @@ class _PerAppPageState extends State<PerAppPage> {
                       ..sort((a, b) {
                         final sa = selected.contains(a.packageName) ? 0 : 1;
                         final sb = selected.contains(b.packageName) ? 0 : 1;
-                        return sa != sb ? sa - sb : a.label.toLowerCase().compareTo(b.label.toLowerCase());
+                        return sa != sb
+                            ? sa - sb
+                            : a.label.toLowerCase().compareTo(
+                                b.label.toLowerCase(),
+                              );
                       });
                 return Opacity(
                   opacity: mode == PerAppMode.off ? 0.5 : 1,
@@ -100,11 +125,22 @@ class _PerAppPageState extends State<PerAppPage> {
                       return CheckboxListTile(
                         secondary: app.icon == null
                             ? const Icon(Symbols.android_rounded, size: 40)
-                            : Image.memory(app.icon!, width: 40, height: 40, gaplessPlayback: true),
+                            : Image.memory(
+                                app.icon!,
+                                width: 40,
+                                height: 40,
+                                gaplessPlayback: true,
+                              ),
                         title: Text(app.label),
-                        subtitle: Text(app.packageName, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Text(
+                          app.packageName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         value: selected.contains(app.packageName),
-                        onChanged: mode == PerAppMode.off ? null : (v) => toggle(app.packageName, v ?? false),
+                        onChanged: mode == PerAppMode.off
+                            ? null
+                            : (v) => toggle(app.packageName, v ?? false),
                       );
                     },
                   ),

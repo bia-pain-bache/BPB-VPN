@@ -556,6 +556,7 @@ class _MultiSelectDialogState extends State<_MultiSelectDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.title),
+      contentPadding: const EdgeInsets.symmetric(vertical: 20),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -564,6 +565,7 @@ class _MultiSelectDialogState extends State<_MultiSelectDialog> {
               CheckboxListTile(
                 value: _selected.contains(o),
                 title: Text('$o'),
+                controlAffinity: ListTileControlAffinity.leading,
                 onChanged: (v) => setState(
                   () => v == true ? _selected.add(o) : _selected.remove(o),
                 ),
