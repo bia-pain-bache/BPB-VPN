@@ -165,7 +165,7 @@ void main() {
     dump('worker_best', c);
   });
 
-  test('every catch-all only matches IPs, so IPIfNonMatch resolves domain-only connections', () async {
+  test('routing strategy defaults to AsIs with matching catch-all rules', () async {
     final configs = [
       await builder({}).build(ConnectionMode.worker),
       await builder({}, chainExit).build(ConnectionMode.serverless),
@@ -175,10 +175,17 @@ void main() {
       await builder({}).build(ConnectionMode.psiphon),
     ];
     for (final b in configs) {
-      expect(b.config['routing']['domainStrategy'], 'IPIfNonMatch');
+      expect(b.config['routing']['domainStrategy'], 'AsIs');
       final rules = (b.config['routing']['rules'] as List).cast<Map>();
-      expect(rules.last['ip'], ['0.0.0.0/0', '::/0'], reason: 'routing rules');
-      expect(rules.last['network'], isNull, reason: 'routing rules');
+      if (rules.last['ip'] != null) {
+        expect(rules.last['ip'], [
+          '0.0.0.0/0',
+          '::/0',
+        ], reason: 'routing rules');
+        expect(rules.last['network'], isNull, reason: 'routing rules');
+      } else {
+        expect(rules.last['network'], isNotNull, reason: 'routing rules');
+      }
       // Where UDP isn't carried, the block rule takes it before the catch-all.
       final udpBlock = rules.indexWhere(
         (r) =>
@@ -193,6 +200,24 @@ void main() {
         );
       }
     }
+  });
+
+  test('routing domain strategy follows the profile setting', () async {
+    final config = await builder({
+      'routing': {'domainStrategy': 'IPIfNonMatch'},
+    }).build(ConnectionMode.worker);
+    expect(config.config['routing']['domainStrategy'], 'IPIfNonMatch');
+  });
+
+  test('workerless exit rules are first and retain their order', () async {
+    final config = await builder({}, {
+      'exit': {'node': 'psiphon', 'region': 'DE'},
+    }).build(ConnectionMode.serverless);
+    final rules = (config.config['routing']['rules'] as List).cast<Map>();
+    expect(rules.first['outboundTag'], 'udp-proxy');
+    expect(rules.first['inboundTag'], ['psiphon-in']);
+    expect(rules.first['network'], 'udp');
+    expect(rules[1]['port'], 53);
   });
 
   test(
@@ -465,7 +490,7 @@ void main() {
         'all-proxies',
       );
       expect(rules.last, containsPair('outboundTag', 'exit'));
-      expect(rules.last['network'], isNull);
+      expect(rules.last['network'], 'tcp,udp');
       // UDP isn't blocked as it is through the worker alone, but bypass and block rules still apply first.
       expect(
         rules.any(
@@ -493,9 +518,9 @@ void main() {
       final upRule = rules.firstWhere(
         (r) => (r['inboundTag'] as List?)?.contains('psiphon-in') ?? false,
       );
-      expect(upRule['outboundTag'], 'proxy');
+      expect(upRule['outboundTag'], 'udp-proxy');
       expect(rules.last['outboundTag'], 'exit');
-      expect(rules.any((r) => r['outboundTag'] == 'udp-noise'), isFalse);
+      expect(rules.any((r) => r['outboundTag'] == 'udp-proxy'), isTrue);
       dump('serverless_psiphon', c);
     });
 
@@ -539,7 +564,7 @@ void main() {
         isFalse,
       );
       expect(rules.last, containsPair('outboundTag', 'proxy'));
-      expect(rules.last['network'], isNull);
+      expect(rules.last['network'], 'tcp,udp');
       expect(c.containsKey('burstObservatory'), isFalse);
       // Remote DNS: Psiphon's DNS server on this phone (not the DoH setting), under the DNS
       // module's tag (routed direct) rather than remote-dns.
@@ -616,7 +641,7 @@ void main() {
         isTrue,
       );
       expect(rules.last, containsPair('outboundTag', 'exit'));
-      expect(rules.last['network'], isNull);
+      expect(rules.last['network'], 'tcp');
       dump('worker_tor', c);
     });
 
@@ -643,7 +668,7 @@ void main() {
             .any((r) => r['network'] == 'udp' && r['outboundTag'] == 'block'),
         isTrue,
       );
-      expect(rulesOf(c).last['network'], isNull);
+      expect(rulesOf(c).last['network'], 'tcp');
     });
 
     test('Tor type: no worker; the proxy is a socks outbound to Tor; UDP is blocked', () async {
@@ -667,7 +692,7 @@ void main() {
         isTrue,
       );
       expect(rulesOf(c).last, containsPair('outboundTag', 'proxy'));
-      expect(rulesOf(c).last['network'], isNull);
+      expect(rulesOf(c).last['network'], 'tcp');
       expect(c.containsKey('burstObservatory'), isFalse);
       dump('tor_type', c);
     });
@@ -698,15 +723,22 @@ void main() {
   });
 
   test(
-    'serverless config routes tls/http/quic to fragment and noise',
+    'Serverless routes TCP through fragments and UDP through its noise proxy',
     () async {
       final c = (await builder(
         everything,
         everythingDevice,
       ).build(ConnectionMode.serverless)).config;
       final tags = (c['outbounds'] as List).map((o) => o['tag']).toList();
-      expect(tags, containsAll(['proxy', 'http-fragment', 'udp-noise']));
-      expect((c['routing']['rules'] as List).last['outboundTag'], 'direct');
+      expect(tags, containsAll(['proxy', 'udp-proxy']));
+      final rules = (c['routing']['rules'] as List).cast<Map>();
+      expect(
+        rules.any(
+          (r) => r['network'] == 'udp' && r['outboundTag'] == 'udp-proxy',
+        ),
+        isTrue,
+      );
+      expect(rules.last['outboundTag'], 'proxy');
       dump('serverless_fragment', c);
     },
   );
@@ -748,6 +780,7 @@ void main() {
         ).build(ConnectionMode.serverless);
         final c = b.config;
         final original = jsonDecode(domainFrontingV23) as Map<String, dynamic>;
+        expect(c['__Credits__'], original['__Credits__']);
         expect(c['routing'], original['routing']);
         expect(c['dns'], original['dns']);
         expect(c['outbounds'], original['outbounds']);
@@ -793,11 +826,21 @@ void main() {
       final original = jsonDecode(domainFrontingV23) as Map<String, dynamic>;
       final v23Rules = (original['routing']['rules'] as List).cast<Map>();
       for (final exit in ['psiphon', 'tor']) {
-        final b = await builder({}, {
-          'connection': {'serverlessMode': 'domainFronting'},
-          'exit': {'node': exit},
-        }).build(ConnectionMode.serverless);
+        final b = await builder(
+          {
+            'routing': {'domainStrategy': 'AsIs'},
+          },
+          {
+            'connection': {'serverlessMode': 'domainFronting'},
+            'exit': {'node': exit},
+          },
+        ).build(ConnectionMode.serverless);
         final c = b.config;
+        expect(c['__Credits__'], original['__Credits__']);
+        expect(
+          c['routing']['domainStrategy'],
+          original['routing']['domainStrategy'],
+        );
 
         final inbounds = (c['inbounds'] as List).cast<Map>();
         expect(inbounds.map((i) => i['tag']), [
@@ -826,6 +869,7 @@ void main() {
           'exit',
           'redirect-out-h11',
           'redirect-out-h211',
+          'tls-repack-frommitm',
           'tls-repack-dns',
           'tls-repack-google',
           'tls-repack-fastly',
@@ -849,7 +893,6 @@ void main() {
             .cast<Map>()
             .map((r) => {...r}..remove('type'))
             .toList();
-        expect(c['routing']['domainStrategy'], 'IPIfNonMatch');
         final redirects = v23Rules
             .where(
               (r) => (r['outboundTag'] as String).startsWith('redirect-out-'),
@@ -868,16 +911,16 @@ void main() {
         expect(decrypted, hasLength(7));
         const yours = ['tun', 'mixed-in'];
         expect(rules, [
+          v23Rules.firstWhere(
+            (r) =>
+                (r['inboundTag'] as List?)?.contains('no-filter-dns') ?? false,
+          ),
           for (final r in redirects)
             {
               'inboundTag': ['$exit-in'],
               ...r,
             },
           ...decrypted,
-          {
-            'inboundTag': ['no-filter-dns'],
-            'outboundTag': 'tls-repack-dns',
-          },
           {
             'inboundTag': ['$exit-in'],
             'outboundTag': 'direct',
@@ -897,7 +940,7 @@ void main() {
             {'inboundTag': yours, 'network': 'udp', 'outboundTag': 'block'},
           {
             'inboundTag': yours,
-            'ip': ['0.0.0.0/0', '::/0'],
+            'network': exit == 'tor' ? 'tcp' : 'tcp,udp',
             'outboundTag': 'exit',
           },
         ]);
@@ -1374,7 +1417,7 @@ void main() {
         ),
         isFalse,
       );
-      expect(rules.last['network'], isNull);
+      expect(rules.last['network'], 'tcp,udp');
       expect(
         c['dns']['servers'].firstWhere(
           (d) => d is Map && d['tag'] == 'remote-dns',
@@ -1752,7 +1795,7 @@ void main() {
     final noise =
         outboundsOf(
               c,
-              'udp-noise',
+              'udp-proxy',
             ).single['streamSettings']['finalmask']['udp'].single['settings']
             as Map;
     expect(noise['reset'], '3-4');

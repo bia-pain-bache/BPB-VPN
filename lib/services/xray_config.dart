@@ -585,8 +585,7 @@ class XrayConfigBuilder {
     final config = await _buildConfig(
       outbounds: [
         _freedomOutbound('proxy', isFragment: true),
-        _freedomOutbound('http-fragment', isFragment: true, packets: '1-1'),
-        _freedomOutbound('udp-noise', isUdpNoise: true),
+        _freedomOutbound('udp-proxy', isUdpNoise: true),
       ],
       isBalancer: false,
       isWorkerless: true,
@@ -616,6 +615,9 @@ class XrayConfigBuilder {
         isBalancer: false,
         outboundAddrs: const [],
       );
+      config['__Credits__'] = v23['__Credits__'];
+      (config['routing'] as Map<String, dynamic>)['domainStrategy'] =
+          (v23['routing'] as Map<String, dynamic>)['domainStrategy'];
       // The exit first: Xray's default for anything no rule takes.
       final all = (config['outbounds'] as List).cast<Map<String, dynamic>>();
       final exit = all.firstWhere((o) => o['tag'] == 'exit');
@@ -649,10 +651,7 @@ class XrayConfigBuilder {
     return XrayBuild(config);
   }
 
-  /// v23's outbounds the exit's fronting uses (not its unused tls-repack-frommitm).
-  static final _frontingOutbound = RegExp(
-    r'^(redirect-out-|tls-repack-(?!frommitm$))',
-  );
+  static final _frontingOutbound = RegExp(r'^(redirect-out-|tls-repack-)');
 
   /// Before the regular rules (limited to tun / mixed-in): v23's redirects to the decrypting
   /// inbounds, limited to the exit's inbound; the decrypted connections' rules as is; Xray's
@@ -662,6 +661,8 @@ class XrayConfigBuilder {
     final v23Rules = (_v23!['routing']['rules'] as List)
         .cast<Map<String, dynamic>>();
     return [
+      for (final r in v23Rules)
+        if ((r['inboundTag'] as List?)?.contains('no-filter-dns') ?? false) r,
       for (final r in v23Rules)
         if ((r['outboundTag'] as String).startsWith('redirect-out-'))
           {
@@ -674,10 +675,6 @@ class XrayConfigBuilder {
             ) ??
             false)
           r,
-      {
-        'inboundTag': ['no-filter-dns'],
-        'outboundTag': 'tls-repack-dns',
-      },
       {
         'inboundTag': [_exitInbound],
         'outboundTag': 'direct',
@@ -810,7 +807,7 @@ class XrayConfigBuilder {
         },
       ],
       'routing': {
-        'domainStrategy': 'IPIfNonMatch',
+        'domainStrategy': profile.routing.domainStrategy.xray,
         'rules': _buildRoutingRules(
           isBalancer: isBalancer,
           isWorkerless: isWorkerless,
@@ -1127,13 +1124,13 @@ class XrayConfigBuilder {
     required bool isWorkerless,
     required bool isWarp,
   }) {
+    final exitWorkerlessRules = <Map<String, dynamic>>[];
     final rules = <Map<String, dynamic>>[
       if (_frontedExit) ..._frontingRules(),
       {
         'inboundTag': ['tun', 'mixed-in'],
         'port': 53,
         'outboundTag': 'dns-out',
-        'type': 'field',
       },
     ];
 
@@ -1146,8 +1143,9 @@ class XrayConfigBuilder {
       List<String>? protocol,
       required String outbound,
       bool balancer = false,
+      List<Map<String, dynamic>>? into,
     }) {
-      rules.add({
+      (into ?? rules).add({
         // Domain Fronting with an exit: the regular rules are for your traffic only, the exit's
         // and the decrypted connections have theirs before them (_frontingRules).
         'inboundTag':
@@ -1158,13 +1156,10 @@ class XrayConfigBuilder {
         'network': network,
         'protocol': protocol,
         if (balancer) 'balancerTag': outbound else 'outboundTag': outbound,
-        'type': 'field',
       });
     }
 
-    final finalTag = isWorkerless ? 'direct' : 'proxy';
-    final outTag = isBalancer ? 'all-proxies' : finalTag;
-    final proxyTag = isBalancer ? 'all-proxies' : 'proxy';
+    final outTag = isBalancer ? 'all-proxies' : 'proxy';
 
     // Through the connection itself: the remote DNS over VLESS / WARP (also with a Psiphon / Tor
     // exit, like BPB with a chain proxy, since the connection is up first), and Psiphon / Tor
@@ -1172,7 +1167,7 @@ class XrayConfigBuilder {
     if (!_exitType && !_frontedExit) {
       add(
         inboundTag: [if (_hasExit) _exitInbound, 'remote-dns'],
-        outbound: proxyTag,
+        outbound: outTag,
         balancer: isBalancer,
       );
     }
@@ -1241,29 +1236,35 @@ class XrayConfigBuilder {
       add(domain: sanctionDomains, outbound: 'direct');
     }
 
-    // The catch-all only matches connections with an IP. One with just a domain (FakeDNS, the
-    // local proxy's clients) that no domain rule took misses it, so IPIfNonMatch's second round
-    // resolves the domain and the IP rules above get their turn. No network: TCP and UDP are all
-    // there is, and where UDP isn't carried it's blocked above.
+    // The catch-all only matches connections with an IP. With IPIfNonMatch, a domain-only
+    // connection that no domain rule took gets a second round after resolving the domain. No
+    // network: TCP and UDP are all there is, and where UDP isn't carried it's blocked above.
     const anyIp = ['0.0.0.0/0', '::/0'];
 
-    if (_hasExit) {
-      add(ip: anyIp, outbound: 'exit');
-      return rules;
-    }
-
     if (isWorkerless) {
-      add(network: 'tcp', protocol: ['tls'], outbound: 'proxy');
-      add(network: 'tcp', protocol: ['http'], outbound: 'http-fragment');
-      add(network: 'udp', protocol: ['quic'], outbound: 'udp-noise');
-      add(
-        port: '443,2053,2083,2087,2096,8443',
-        network: 'udp',
-        outbound: 'udp-noise',
-      );
+      final target = _hasExit ? exitWorkerlessRules : rules;
+      if (!tcpOnly) {
+        add(
+          inboundTag: _hasExit ? [_exitInbound] : null,
+          network: 'udp',
+          outbound: 'udp-proxy',
+          into: target,
+        );
+      }
     }
+    if (_hasExit) rules.insertAll(0, exitWorkerlessRules);
 
-    add(ip: anyIp, outbound: outTag, balancer: isBalancer);
+    final domainStrategy = profile.routing.domainStrategy.xray;
+    final network = tcpOnly ? 'tcp' : 'tcp,udp';
+    final outbound = _hasExit ? 'exit' : outTag;
+
+    add(
+      ip: domainStrategy == 'AsIs' ? null : anyIp,
+      network: domainStrategy == 'AsIs' ? network : null,
+      outbound: outbound,
+      balancer: isBalancer && !_hasExit,
+    );
+
     return rules;
   }
 
@@ -1458,7 +1459,8 @@ class XrayConfigBuilder {
             'address': [account.ipv4, account.ipv6],
           },
         },
-        if (isDomainAddr) 'sockopt': _sockopt(happyEyeballs: !h3, domainStrategy: 'UseIP'),
+        if (isDomainAddr)
+          'sockopt': _sockopt(happyEyeballs: !h3, domainStrategy: 'UseIP'),
         if (fragment)
           'finalmask': _finalMask(fragment: true, fragments: _masque.fragments),
         if (noises != null)

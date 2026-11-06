@@ -718,12 +718,26 @@ class RoutingPresets {
   };
 }
 
+enum RoutingDomainStrategy {
+  asIs('AsIs'),
+  ipIfNonMatch('IPIfNonMatch');
+
+  final String xray;
+  const RoutingDomainStrategy(this.xray);
+
+  static RoutingDomainStrategy parse(Object? value) =>
+      values.where((strategy) => strategy.xray == value).firstOrNull ??
+      RoutingDomainStrategy.asIs;
+}
+
 class RoutingSettings {
+  final RoutingDomainStrategy domainStrategy;
   final RuleGroup bypass;
   final RuleGroup sanctionBypass;
   final RuleGroup block;
 
   const RoutingSettings({
+    this.domainStrategy = RoutingDomainStrategy.asIs,
     this.bypass = const RuleGroup(RoutingPresets.bypass),
     this.sanctionBypass = const RuleGroup(RoutingPresets.sanctionBypass),
     this.block = const RuleGroup(RoutingPresets.block),
@@ -733,6 +747,7 @@ class RoutingSettings {
     final j = _map(v);
     const d = RoutingSettings();
     return RoutingSettings(
+      domainStrategy: RoutingDomainStrategy.parse(j['domainStrategy']),
       bypass: RuleGroup.parse(j['bypass'], d.bypass),
       sanctionBypass: RuleGroup.parse(j['sanctionBypass'], d.sanctionBypass),
       block: RuleGroup.parse(j['block'], d.block),
@@ -740,6 +755,7 @@ class RoutingSettings {
   }
 
   Map<String, dynamic> toJson() => {
+    'domainStrategy': domainStrategy.xray,
     'bypass': bypass.toJson(),
     'sanctionBypass': sanctionBypass.toJson(),
     'block': block.toJson(),

@@ -37,6 +37,8 @@ class SettingsPage extends StatelessWidget {
     'unsafe': 'Unsafe',
   };
 
+  static const routingStrategy = {'AsIs': 'Speed', 'IPIfNonMatch': 'Accuracy'};
+
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
@@ -537,6 +539,12 @@ class SettingsPage extends StatelessWidget {
           const SectionHeader('Routing'),
           const SettingsCard(
             children: [
+              ChoicePref(
+                'routing.domainStrategy',
+                'Strategy',
+                routingStrategy,
+                icon: Symbols.discover_tune_rounded,
+              ),
               _RulesTile(
                 title: 'Bypass rules',
                 icon: Symbols.alt_route_rounded,

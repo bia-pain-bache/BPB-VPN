@@ -173,6 +173,29 @@ void main() {
     expect(Profile.fromJson(p.toSparseJson()).toJson(), p.toJson());
   });
 
+  test(
+    'routing strategy is stored sparsely and invalid values use the default',
+    () {
+      expect(
+        const Profile().routing.domainStrategy,
+        RoutingDomainStrategy.asIs,
+      );
+      final p = const Profile().updated(
+        'routing.domainStrategy',
+        'IPIfNonMatch',
+      );
+      expect(p.routing.domainStrategy, RoutingDomainStrategy.ipIfNonMatch);
+      expect(p.toSparseJson()['routing'], {'domainStrategy': 'IPIfNonMatch'});
+      expect(Profile.fromJson(p.toSparseJson()).toJson(), p.toJson());
+      expect(
+        Profile.fromJson({
+          'routing': {'domainStrategy': 'unknown'},
+        }).routing.domainStrategy,
+        RoutingDomainStrategy.asIs,
+      );
+    },
+  );
+
   test('a changed default reaches profiles that never set the value', () {
     final stored = const Profile().updated('vless.ports', [
       443,
