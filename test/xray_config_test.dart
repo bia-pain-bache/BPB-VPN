@@ -209,7 +209,7 @@ void main() {
     expect(config.config['routing']['domainStrategy'], 'IPIfNonMatch');
   });
 
-  test('workerless exit rules are first and retain their order', () async {
+  test('serverless exit rules are first and retain their order', () async {
     final config = await builder({}, {
       'exit': {'node': 'psiphon', 'region': 'DE'},
     }).build(ConnectionMode.serverless);

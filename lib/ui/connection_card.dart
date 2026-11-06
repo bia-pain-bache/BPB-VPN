@@ -227,7 +227,7 @@ class _TypeSelector extends StatelessWidget {
   }
 }
 
-/// Serverless: Fragment or Domain Fronting. Tor: bridges. MASQUE: mode. Worker / WARP: variant.
+/// Serverless: Packet or Domain Fronting. Tor: bridges. MASQUE: mode. Worker / WARP: variant.
 class _ModeSelector extends StatelessWidget {
   const _ModeSelector();
 

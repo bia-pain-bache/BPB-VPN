@@ -31,7 +31,7 @@ enum ConnectionMode {
   /// No worker: everything (TCP) exits through Tor, which connects through built-in bridges.
   tor('Tor'),
 
-  /// No worker: direct connections with TLS fragmentation and UDP noise.
+  /// Direct packet mode: TLS fragmentation for TCP and UDP noise.
   serverless('Serverless');
 
   final String label;
@@ -92,10 +92,11 @@ enum MasqueVariant {
   };
 }
 
-/// Serverless configs: TLS fragmentation and UDP noise, or patterniha's MITM domain fronting
-/// (browsers only: it decrypts their TLS with the app's own CA, see MitmCa).
+/// Serverless configs: packet obfuscation (TLS fragmentation for TCP and UDP noise), or
+/// patterniha's MITM domain fronting (browsers only: it decrypts their TLS with the app's own CA,
+/// see MitmCa).
 enum ServerlessMode {
-  fragment('Fragment'),
+  packet('Packet'),
   domainFronting('Domain Fronting');
 
   final String label;
@@ -258,7 +259,7 @@ class XrayConfigBuilder {
 
   static ServerlessMode serverlessModeOf(DeviceSettings device) =>
       ServerlessMode.values.asNameMap()[device.serverlessMode] ??
-      ServerlessMode.fragment;
+      ServerlessMode.packet;
 
   /// The Psiphon / Tor type: the exit process connects by itself (the app is outside the VPN),
   /// and the socks outbound to it is the "proxy".

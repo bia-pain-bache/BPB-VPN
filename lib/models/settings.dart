@@ -1040,7 +1040,7 @@ class DeviceSettings {
     this.workerVariant = 'normal',
     this.warpVariant = 'normal',
     this.masqueVariant = 'normal',
-    this.serverlessMode = 'fragment',
+    this.serverlessMode = 'packet',
     this.torBridge = 'snowflake',
     this.exitNode = ExitNode.worker,
     this.exitNodes = const {},
