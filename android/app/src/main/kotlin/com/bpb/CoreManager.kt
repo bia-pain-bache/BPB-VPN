@@ -18,6 +18,7 @@ import java.util.concurrent.CopyOnWriteArraySet
  */
 object CoreManager {
     private const val TAG = "BpbCore"
+    const val DEFAULT_TEST_URL = "https://www.gstatic.com/generate_204"
 
     enum class State { DISCONNECTED, CONNECTING, CONNECTED, DISCONNECTING }
 
@@ -70,6 +71,7 @@ object CoreManager {
     @Synchronized
     fun beginVpnStart(): Boolean {
         if (scannerReserved) return false
+        connectedAt = 0L
         setState(State.CONNECTING)
         return true
     }
@@ -82,7 +84,7 @@ object CoreManager {
         state = newState
         lastError = error
         detail = null
-        if (newState == State.CONNECTED) connectedAt = System.currentTimeMillis()
+        if (newState == State.CONNECTED && connectedAt == 0L) connectedAt = System.currentTimeMillis()
         if (newState == State.DISCONNECTED) connectedAt = 0L
         mainHandler.post { listeners.forEach { it.onStateChanged(newState, error) } }
     }
@@ -216,6 +218,8 @@ object ConfigStore {
         val psiphonConfig: String? = null,
         /** Worker's Browser Dialer: Xray's WebSockets are opened by a WebView (see BrowserDialer). */
         val browserDialer: Boolean = false,
+        /** Verify internet reachability before reporting this connection as connected. */
+        val verifyConnection: Boolean = false,
     )
 
     fun save(context: Context, config: String, options: Options) {
@@ -234,6 +238,7 @@ object ConfigStore {
             .putString("torCustomBridges", options.torCustomBridges.joinToString("\n"))
             .putString("psiphonConfig", options.psiphonConfig)
             .putBoolean("browserDialer", options.browserDialer)
+            .putBoolean("verifyConnection", options.verifyConnection)
             .apply()
     }
 
@@ -266,6 +271,7 @@ object ConfigStore {
                 ?.split('\n')?.filter { it.isNotBlank() } ?: emptyList(),
             psiphonConfig = prefs.getString("psiphonConfig", null),
             browserDialer = prefs.getBoolean("browserDialer", false),
+            verifyConnection = prefs.getBoolean("verifyConnection", false),
         )
     }
 }

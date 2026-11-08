@@ -8,12 +8,18 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.net.ConnectivityManager
+import android.net.LinkProperties
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.ProxyInfo
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
@@ -62,6 +68,32 @@ class BpbVpnService : VpnService() {
     private var tick: ScheduledFuture<*>? = null
     private var remark = ""
 
+    private val verifier = Executors.newSingleThreadScheduledExecutor()
+    private val verification = VerificationState()
+    private var verificationTimer: ScheduledFuture<*>? = null
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private var physicalNetworkCallback: ConnectivityManager.NetworkCallback? = null
+    private var defaultNetwork: Network? = null
+    private var defaultLinkProperties: NetworkLinkSnapshot? = null
+
+    private data class NetworkLinkSnapshot(
+        val interfaceName: String?,
+        val addresses: List<String>,
+        val routes: List<String>,
+        val dns: List<String>,
+        val domains: String?,
+        val mtu: Int,
+    ) {
+        constructor(properties: LinkProperties) : this(
+            properties.interfaceName,
+            properties.linkAddresses.map { it.toString() },
+            properties.routes.map { it.toString() },
+            properties.dnsServers.map { it.hostAddress ?: it.toString() },
+            properties.domains,
+            properties.mtu,
+        )
+    }
+
     /** Set by Stop, so a start it interrupts (e.g. waiting for Psiphon or Tor) isn't reported as a failure. */
     @Volatile
     private var stopRequested = false
@@ -88,16 +120,19 @@ class BpbVpnService : VpnService() {
     }
 
     override fun onRevoke() {
+        stopRequested = true
         worker.execute { stopVpn() }
     }
 
     override fun onDestroy() {
+        stopRequested = true
         if (CoreManager.state != CoreManager.State.DISCONNECTED) {
             shutdownCore()
             CoreManager.setState(CoreManager.State.DISCONNECTED)
         }
         worker.shutdown()
         ticker.shutdownNow()
+        verifier.shutdownNow()
         super.onDestroy()
     }
 
@@ -185,10 +220,195 @@ class BpbVpnService : VpnService() {
     }
 
     private fun onCoreStarted(options: ConfigStore.Options) {
-        CoreManager.setState(CoreManager.State.CONNECTED)
+        if (stopRequested) return
         remark = options.remark
-        notify(buildNotification(remark, connected = true))
         startTicker()
+        if (options.verifyConnection) {
+            verification.start()
+            watchNetwork()
+            checkConnection()
+        } else {
+            CoreManager.setState(CoreManager.State.CONNECTED)
+            notify(buildNotification(remark, connected = true))
+        }
+    }
+
+    private fun dispatchToWorker(action: () -> Unit) {
+        try {
+            worker.execute(action)
+        } catch (e: RejectedExecutionException) {
+            if (!stopRequested) Log.w(TAG, "VPN worker rejected an action", e)
+        }
+    }
+
+    private fun watchNetwork() {
+        val manager = getSystemService(ConnectivityManager::class.java)
+        val physicalNetworks = PhysicalNetworks(
+            manager.allNetworks.mapNotNull { network ->
+                val caps = manager.getNetworkCapabilities(network)
+                if (caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) != true ||
+                    !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)) {
+                    null
+                } else {
+                    network to manager.getLinkProperties(network)?.let(::NetworkLinkSnapshot)
+                }
+            }.toMap()
+        )
+        val physicalCallback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                dispatchToWorker {
+                    if (physicalNetworkCallback !== this) return@dispatchToWorker
+                    if (physicalNetworks.available(network) && verification.enabled) checkConnection(delayMs = 500)
+                }
+            }
+
+            override fun onLinkPropertiesChanged(network: Network, properties: LinkProperties) {
+                val snapshot = NetworkLinkSnapshot(properties)
+                dispatchToWorker {
+                    if (physicalNetworkCallback !== this) return@dispatchToWorker
+                    if (physicalNetworks.linkChanged(network, snapshot) && verification.enabled) checkConnection(delayMs = 500)
+                }
+            }
+
+            override fun onLost(network: Network) {
+                dispatchToWorker {
+                    if (physicalNetworkCallback !== this) return@dispatchToWorker
+                    if (physicalNetworks.lost(network) && verification.enabled) checkConnection(delayMs = 500)
+                }
+            }
+        }
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+            .build()
+        physicalNetworkCallback = physicalCallback
+        try {
+            manager.registerNetworkCallback(request, physicalCallback)
+        } catch (e: RuntimeException) {
+            physicalNetworkCallback = null
+            throw IllegalStateException("Cannot monitor underlying network changes", e)
+        }
+        val active = manager.activeNetwork
+        if (active != null && manager.getNetworkCapabilities(active)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) != true) {
+            defaultNetwork = active
+            defaultLinkProperties = manager.getLinkProperties(active)?.let(::NetworkLinkSnapshot)
+        }
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                if (manager.getNetworkCapabilities(network)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true) return
+                dispatchToWorker {
+                    if (networkCallback !== this || defaultNetwork == network) return@dispatchToWorker
+                    defaultNetwork = network
+                    defaultLinkProperties = null
+                    if (verification.enabled) checkConnection(delayMs = 500)
+                }
+            }
+
+            override fun onLinkPropertiesChanged(network: Network, properties: LinkProperties) {
+                dispatchToWorker {
+                    if (networkCallback !== this || defaultNetwork != network) return@dispatchToWorker
+                    val previous = defaultLinkProperties
+                    val current = NetworkLinkSnapshot(properties)
+                    defaultLinkProperties = current
+                    if (previous != null && previous != current && verification.enabled) {
+                        checkConnection(delayMs = 500)
+                    }
+                }
+            }
+
+            override fun onLost(network: Network) {
+                dispatchToWorker {
+                    if (networkCallback !== this || defaultNetwork != network) return@dispatchToWorker
+                    defaultNetwork = null
+                    defaultLinkProperties = null
+                    if (verification.enabled) checkConnection(delayMs = 500)
+                }
+            }
+        }
+        networkCallback = callback
+        try {
+            manager.registerDefaultNetworkCallback(callback)
+        } catch (e: RuntimeException) {
+            networkCallback = null
+            throw IllegalStateException("Cannot monitor network changes", e)
+        }
+    }
+
+    private fun checkConnection(delayMs: Long = 0) {
+        if (!verification.enabled || stopRequested) return
+        verification.request()
+        verificationTimer?.cancel(false)
+        verificationTimer = null
+        CoreManager.setState(CoreManager.State.CONNECTING)
+        CoreManager.setDetail("Checking connection…")
+        notify(buildNotification(remark, connected = false))
+        if (!verification.inFlight) scheduleVerification(delayMs)
+    }
+
+    private fun scheduleVerification(delayMs: Long) {
+        val generation = verification.generation
+        try {
+            verificationTimer = verifier.schedule({
+                dispatchToWorker {
+                    if (stopRequested || !verification.begin(generation)) return@dispatchToWorker
+                    verificationTimer = null
+                    try {
+                        verifier.execute {
+                            var failure: Exception? = null
+                            try {
+                                if (CoreManager.controller.measureDelay(CoreManager.DEFAULT_TEST_URL) < 0) {
+                                    throw IllegalStateException("Internet check returned no delay")
+                                }
+                            } catch (e: Exception) {
+                                failure = e
+                            }
+                            dispatchToWorker { finishVerification(generation, failure) }
+                        }
+                    } catch (e: RejectedExecutionException) {
+                        verification.finish(generation, false)
+                        if (!stopRequested) fail("Could not run the internet check: ${e.message}")
+                    }
+                }
+            }, delayMs, TimeUnit.MILLISECONDS)
+        } catch (e: RejectedExecutionException) {
+            if (!stopRequested) fail("Could not schedule the internet check: ${e.message}")
+        }
+    }
+
+    private fun finishVerification(generation: Long, failure: Exception?) {
+        val result = verification.finish(generation, failure == null)
+        if (stopRequested) return
+        when (result) {
+            VerificationState.Result.Ignored -> Unit
+            VerificationState.Result.Connected -> {
+                CoreManager.setState(CoreManager.State.CONNECTED)
+                notify(buildNotification(remark, connected = true))
+            }
+            is VerificationState.Result.Retry -> {
+                if (!result.stale) {
+                    Log.w(TAG, "Connection failed; retrying", failure)
+                    CoreManager.setDetail("Connection failed · Retrying…")
+                    notify(buildNotification(remark, connected = false))
+                }
+                scheduleVerification(result.delayMs)
+            }
+        }
+    }
+
+    private fun stopVerification() {
+        verification.stop()
+        verificationTimer?.cancel(false)
+        verificationTimer = null
+        networkCallback?.let {
+            getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(it)
+        }
+        physicalNetworkCallback?.let {
+            getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(it)
+        }
+        networkCallback = null
+        physicalNetworkCallback = null
+        defaultNetwork = null
+        defaultLinkProperties = null
     }
 
     private fun applyPerAppRules(builder: Builder, options: ConfigStore.Options) {
@@ -233,13 +453,15 @@ class BpbVpnService : VpnService() {
         TrafficMeter.reset()
         tick?.cancel(false)
         tick = ticker.scheduleWithFixedDelay({
-            if (CoreManager.state != CoreManager.State.CONNECTED) return@scheduleWithFixedDelay
+            if (CoreManager.state != CoreManager.State.CONNECTED &&
+                CoreManager.state != CoreManager.State.CONNECTING) return@scheduleWithFixedDelay
             TrafficMeter.sample()
-            notify(buildNotification(remark, connected = true))
+            notify(buildNotification(remark, connected = CoreManager.state == CoreManager.State.CONNECTED))
         }, 1, 1, TimeUnit.SECONDS)
     }
 
     private fun shutdownCore() {
+        stopVerification()
         tick?.cancel(false)
         tick = null
         TrafficMeter.reset()
@@ -314,7 +536,9 @@ class BpbVpnService : VpnService() {
                 .setWhen(CoreManager.connectedAt)
                 .setUsesChronometer(true)
         } else {
-            builder.setContentText("Connecting…")
+            val label = if (CoreManager.connectedAt > 0) "Reconnecting" else "Connecting"
+            val detail = CoreManager.detail
+            builder.setContentText(if (detail == null) "$label…" else "$label · $detail")
         }
 
         // No title: the header (app name · mode · timer) already says it all.

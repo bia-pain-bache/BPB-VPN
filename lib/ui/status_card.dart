@@ -61,7 +61,7 @@ class _StatusCardState extends State<StatusCard> {
         state.exitDetail ?? 'Tap to disconnect',
       ),
       VpnStatus.connecting => (
-        'Connecting',
+        state.connectedAt == null ? 'Connecting' : 'Reconnecting',
         state.exitDetail ?? 'Starting the tunnel…',
       ),
       VpnStatus.disconnecting => ('Disconnecting', 'Stopping the tunnel…'),
@@ -428,7 +428,7 @@ class _PowerButtonState extends State<_PowerButton> {
 
     return Semantics(
       button: true,
-      label: state.isConnected ? 'Disconnect' : 'Connect',
+      label: state.status == VpnStatus.disconnected ? 'Connect' : 'Disconnect',
       child: Stack(
         alignment: Alignment.center,
         children: [

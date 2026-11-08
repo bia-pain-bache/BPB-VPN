@@ -43,6 +43,9 @@ enum ConnectionMode {
   /// IP as remote DNS.
   bool get isWarpLike => this == warp || this == masque;
 
+  /// Modes whose running connection is checked before it is reported as connected.
+  bool get verifiesConnection => this == worker || isWarpLike;
+
   /// Modes that connect through the deployed worker.
   bool get needsWorker => this == worker;
 

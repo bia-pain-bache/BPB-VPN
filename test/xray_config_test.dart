@@ -76,6 +76,14 @@ PersistentKeepalive = 25
 ''';
 
 void main() {
+  test('only Worker, WARP and MASQUE use connection verification', () {
+    expect(ConnectionMode.values.where((mode) => mode.verifiesConnection), [
+      ConnectionMode.worker,
+      ConnectionMode.warp,
+      ConnectionMode.masque,
+    ]);
+  });
+
   test('WARP scanner uses app WireGuard settings and selected port', () {
     final keys = X25519KeyPair.generate();
     final account = WarpAccount(
@@ -99,7 +107,7 @@ void main() {
       final peer = (settings['peers'] as List).single as Map;
       expect(peer['endpoint'], '127.0.0.1:4500');
       expect(settings['secretKey'], account.privateKey);
-      expect(settings['reserved'], [1, 2, 3]);
+      expect(settings['reserved'], [0, 0, 0]);
       final stream = outbound['streamSettings'] as Map?;
       if (mode == 'normal') {
         expect(stream, isNull);
@@ -1505,7 +1513,7 @@ void main() {
       final proxies = outboundsOf(c, 'proxy-');
       expect(proxies.length, 3);
       expect(proxies.every((o) => o['protocol'] == 'wireguard'), isTrue);
-      expect(proxies.first['settings']['reserved'], [1, 2, 3]);
+      expect(proxies.first['settings']['reserved'], [0, 0, 0]);
       expect(proxies.first['settings']['address'], [
         '172.16.0.2/32',
         '2606:4700:110:8a36:df92:102a:9602:fa18/128',

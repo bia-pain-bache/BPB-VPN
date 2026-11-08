@@ -74,6 +74,7 @@ dependencies {
     implementation(files("libs/xray.aar"))
     // FileProvider, for sharing exported settings files.
     implementation("androidx.core:core:1.13.1")
+    testImplementation("junit:junit:4.13.2")
 }
 
 kotlin {

@@ -47,7 +47,7 @@ class BpbTileService : TileService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             tile.subtitle = when (CoreManager.state) {
                 CoreManager.State.CONNECTED -> "Connected"
-                CoreManager.State.CONNECTING -> "Connecting…"
+                CoreManager.State.CONNECTING -> if (CoreManager.connectedAt > 0) "Reconnecting…" else "Connecting…"
                 CoreManager.State.DISCONNECTING -> "Disconnecting…"
                 CoreManager.State.DISCONNECTED -> "Off"
             }

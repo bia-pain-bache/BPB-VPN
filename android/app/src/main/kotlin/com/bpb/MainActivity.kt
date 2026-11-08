@@ -42,7 +42,6 @@ class MainActivity : FlutterActivity() {
 
         /** Larger "settings files" are rejected rather than read into memory. */
         private const val MAX_PICKED_BYTES = 1 shl 20
-        private const val DEFAULT_TEST_URL = "https://www.gstatic.com/generate_204"
     }
 
     private val background = Executors.newFixedThreadPool(4)
@@ -168,6 +167,7 @@ class MainActivity : FlutterActivity() {
                         torCustomBridges = call.argument<List<String>>("torCustomBridges") ?: emptyList(),
                         psiphonConfig = call.argument<String>("psiphonConfig"),
                         browserDialer = call.argument<Boolean>("browserDialer") ?: false,
+                        verifyConnection = call.argument<Boolean>("verifyConnection") ?: false,
                     )
                 )
                 BpbVpnService.start(this)
@@ -214,7 +214,7 @@ class MainActivity : FlutterActivity() {
                 ),
             )
             "measureDelay" -> {
-                val url = call.argument<String>("url") ?: DEFAULT_TEST_URL
+                val url = call.argument<String>("url") ?: CoreManager.DEFAULT_TEST_URL
                 runInBackground(result) {
                     // Delay through the running tunnel.
                     if (!CoreManager.controller.isRunning) throw IllegalStateException("Not connected")

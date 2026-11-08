@@ -485,13 +485,14 @@ class AppState extends ChangeNotifier {
 
   void _onVpnState(VpnStateEvent event) {
     final wasConnected = status == VpnStatus.connected;
+    final sameSession = connectedAt != null && connectedAt == event.connectedAt;
     status = event.status;
     error = event.error;
     connectedAt = event.connectedAt;
     exitDetail = event.detail;
     if (status == VpnStatus.connected) {
       _startTrafficTimer();
-      if (!wasConnected) {
+      if (!wasConnected && !sameSession) {
         needsReconnect = false;
         totalUp = totalDown = 0;
         unawaited(refreshMyIps());
@@ -628,6 +629,7 @@ class AppState extends ChangeNotifier {
       browserDialer:
           mode == ConnectionMode.worker &&
           variant == ConnectionVariant.browserDialer,
+      verifyConnection: mode.verifiesConnection,
     );
   }
 
