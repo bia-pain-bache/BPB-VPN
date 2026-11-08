@@ -14,6 +14,7 @@ import '../state/app_state.dart';
 import 'cf_accounts_page.dart';
 import 'chain_proxies_page.dart';
 import 'cloudflare_scanner_page.dart';
+import 'donation_page.dart';
 import 'fragments_page.dart';
 import 'license_page.dart';
 import 'noises_page.dart';
@@ -677,6 +678,15 @@ class SettingsPage extends StatelessWidget {
                 trailing: const Icon(Symbols.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const LicensePageView()),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Symbols.favorite_rounded),
+                title: const Text('Donation'),
+                subtitle: const Text('Keep this project alive'),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const DonationPage()),
                 ),
               ),
             ],

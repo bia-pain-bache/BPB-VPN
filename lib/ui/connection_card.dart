@@ -66,7 +66,7 @@ class ConnectionCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12),
       shape: roundedShape(
-        kCardRadius,
+        kHeroRadius,
         side: BorderSide(
           color: scheme.outlineVariant.withValues(alpha: 0.75),
           width: 0.75,
@@ -75,7 +75,7 @@ class ConnectionCard extends StatelessWidget {
       color: scheme.surfaceContainer,
       elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

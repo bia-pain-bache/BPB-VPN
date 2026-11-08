@@ -16,10 +16,9 @@ const _green = Color(0xFF1FA463);
 const _tabular = TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
 
 // Layout constants: the power button is positioned from these.
-const _pad = 20.0;
+const _pad = 24.0;
 const _rowHeight = 124.0;
 const _button = 116.0;
-const _buttonTop = _pad + (_rowHeight - _button) / 2;
 
 /// Home status card: state, power button, duration, ping and exit IPs (the connection's
 /// settings are on the ConnectionCard above it).
@@ -138,7 +137,7 @@ class _StatusCardState extends State<StatusCard> {
           ),
           Positioned(
             right: _pad - 8,
-            top: _buttonTop - 8,
+            top: _pad - 8,
             width: _button + 16,
             height: _button + 16,
             child: const _PowerButton(),
