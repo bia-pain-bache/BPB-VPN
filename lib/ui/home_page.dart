@@ -264,7 +264,7 @@ class _InfoCard extends StatelessWidget {
               children: [
                 Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
                 const SizedBox(width: 8),
-                Expanded(child: Text(title, style: theme.textTheme.titleSmall)),
+                Expanded(child: Text(title, style: theme.textTheme.titleMedium)),
                 IconButton(
                   tooltip: 'Refresh',
                   padding: EdgeInsets.zero,
@@ -341,7 +341,7 @@ class _UsageCard extends StatelessWidget {
     final style = theme.textTheme.bodyMedium?.merge(_tabular);
     return _InfoCard(
       icon: Symbols.data_usage_rounded,
-      title: 'Request usage · last 24h',
+      title: 'Requests · last 24h',
       loading: state.loadingUsage,
       onRefresh: state.refreshUsage,
       children: [
@@ -394,11 +394,11 @@ class _AccountUsage extends StatelessWidget {
           Text.rich(
             TextSpan(
               children: [
+                TextSpan(text: '${(ratio * 100).toStringAsFixed(1)}% · '),
                 TextSpan(
                   text: formatCount(total),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                TextSpan(text: ' · ${(ratio * 100).toStringAsFixed(1)}%'),
               ],
             ),
             style: style,

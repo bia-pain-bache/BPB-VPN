@@ -493,7 +493,7 @@ class WarpSettings {
     this.endpoints = const [],
     this.keepAlive = 10,
     this.speedTestInterval = 30,
-    this.enableReservedBytes = true,
+    this.enableReservedBytes = false,
     this.account,
   });
 

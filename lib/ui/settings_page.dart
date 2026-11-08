@@ -143,18 +143,18 @@ class SettingsPage extends StatelessWidget {
               ),
               const SwitchPref(
                 'device.lanSharing.enabled',
-                'Allow LAN connection',
+                'Share over LAN',
                 icon: Symbols.lan_rounded,
-                subtitle: 'Enable a Socks, HTTP proxy on port 10808',
+                subtitle: 'Share a Socks, HTTP proxy on port 10808',
               ),
               if (d.lanSharing) ...[
                 const TextPref(
                   'device.lanSharing.username',
                   'Proxy username',
-                  icon: Symbols.person_rounded,
+                  icon: Symbols.account_circle_rounded,
                   hint: 'Optional',
                   help:
-                      'Set a username and password to only allow trusted devices. '
+                      'Recommended to set a username and password to only allow trusted devices. '
                       'Leave both empty for no login.',
                   allowEmpty: true,
                   validator: validateProxyUsername,
