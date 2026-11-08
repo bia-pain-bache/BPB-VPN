@@ -66,6 +66,57 @@ void dump(String name, Map<String, dynamic> config) {
 }
 
 void main() {
+  test('scanner uses the MASQUE account and selected transport', () {
+    final builder = XrayConfigBuilder(
+      Profile.fromJson(masque({'sni': 'custom.example.com'})),
+      const DeviceSettings(),
+    );
+    final domain = builder.scannerDomain(masque: true);
+    expect(domain, 'custom.example.com');
+    for (final (protocol, alpn) in [('masque-h2', 'h2'), ('masque-h3', 'h3')]) {
+      final outbound = builder.scannerOutbound(
+        protocol: protocol,
+        mode: 'normal',
+        domain: domain,
+        port: 443,
+      );
+      final stream = outbound['streamSettings'] as Map;
+      expect(outbound['protocol'], 'masque');
+      expect(stream, isNot(contains('sockopt')));
+      expect((stream['tlsSettings'] as Map)['alpn'], [alpn]);
+      expect((stream['tlsSettings'] as Map)['serverName'], domain);
+      expect(
+        (stream['masqueSettings'] as Map)['warp'],
+        containsPair('privateKey', account['privateKey']),
+      );
+    }
+    for (final (protocol, mode) in [
+      ('masque-h2', 'fragment'),
+      ('masque-h3', 'noise'),
+    ]) {
+      final stream =
+          builder.scannerOutbound(
+                protocol: protocol,
+                mode: mode,
+                domain: domain,
+                port: 443,
+              )['streamSettings']
+              as Map;
+      expect(stream, isNot(contains('sockopt')));
+      expect(stream['finalmask'], isNotNull);
+    }
+    expect(
+      () => XrayConfigBuilder(const Profile(), const DeviceSettings())
+          .scannerOutbound(
+            protocol: 'masque-h2',
+            mode: 'normal',
+            domain: 'example.com',
+            port: 443,
+          ),
+      throwsStateError,
+    );
+  });
+
   test('Normal H2: a balancer over every endpoint, MASQUE over HTTP/2 with the account', () async {
     final b = await build('normal', {
       ...masque({'tlsFingerprint': 'firefox'}),

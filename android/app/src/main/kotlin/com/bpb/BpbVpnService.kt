@@ -102,14 +102,17 @@ class BpbVpnService : VpnService() {
     }
 
     private fun startVpn() {
+        if (!CoreManager.beginVpnStart()) {
+            CoreManager.setState(CoreManager.State.DISCONNECTED, "Stop the scanner before starting the VPN")
+            stopSelfCompat()
+            return
+        }
         val config = ConfigStore.loadConfig(this)?.let { CoreLog.attach(this, it) }
         if (config == null) {
             fail("No configuration found. Open the app and connect once.")
             return
         }
         val options = ConfigStore.loadOptions(this)
-        CoreManager.setState(CoreManager.State.CONNECTING)
-
         try {
             CoreManager.initEnv(this)
             // Restarting with a new config: tear down the previous session first.

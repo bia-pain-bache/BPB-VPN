@@ -42,8 +42,9 @@ class _FragmentsPageState extends State<FragmentsPage> {
         .map(Fragment.parse)
         .map(_FragmentDraft.from)
         .toList();
-    if (_fragments.isEmpty)
+    if (_fragments.isEmpty) {
       _fragments.add(_FragmentDraft.from(const Fragment()));
+    }
   }
 
   @override

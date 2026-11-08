@@ -6,12 +6,14 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../models/settings.dart';
 import '../models/theme_color.dart';
+import '../services/scanner_channel.dart';
 import '../services/updates.dart';
 import '../services/vpn_channel.dart';
 import '../services/xray_config.dart';
 import '../state/app_state.dart';
 import 'cf_accounts_page.dart';
 import 'chain_proxies_page.dart';
+import 'cloudflare_scanner_page.dart';
 import 'fragments_page.dart';
 import 'license_page.dart';
 import 'noises_page.dart';
@@ -215,14 +217,6 @@ class SettingsPage extends StatelessWidget {
                 help: 'Resolves foreign domains for routing and can be a DoH or TCP DNS.',
                 validator: validateRemoteDns,
               ),
-              const ListPref(
-                'vless.cleanIps',
-                'Clean IPs or domains',
-                icon: Symbols.list_arrow_rounded,
-                hint: 'www.speedtest.net\n104.16.1.1\n2606:4700::6810:84e5',
-                help: 'Set clean Cloudflare IPs or domains to boost connection speed.',
-                itemValidator: validateHost,
-              ),
               const MultiIntPref(
                 'vless.ports',
                 'Ports',
@@ -340,6 +334,32 @@ class SettingsPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
+          SettingsCard(
+            children: [
+              const ListPref(
+                'vless.cleanIps',
+                'Clean IPs or domains',
+                icon: Symbols.list_arrow_rounded,
+                hint: 'www.speedtest.net\n104.16.1.1\n2606:4700::6810:84e5',
+                help: 'Set clean Cloudflare IPs or domains to boost connection speed.',
+                itemValidator: validateHost,
+              ),
+              ListTile(
+                leading: const Icon(Symbols.manage_search_rounded),
+                title: const Text('Scan clean IPs'),
+                subtitle: const Text('Find fast IPs for VLESS'),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const CloudflareScannerPage(
+                      protocol: ScanProtocol.vless,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           SettingsCard(children: [const _CloudflareAccountsTile()]),
 
           const SectionHeader('Warp'),
@@ -352,15 +372,6 @@ class SettingsPage extends StatelessWidget {
                 hint: '1.1.1.1',
                 help: 'It can be a UDP DNS, TCP DNS or DoH.',
                 validator: validateTunnelDns,
-              ),
-              const ListPref(
-                'warp.endpoints',
-                'Endpoints',
-                icon: Symbols.list_arrow_rounded,
-                hint: 'engage.cloudflareclient.com:2408\n162.159.192.1:2408\n[2606:4700:d0::a29f:c001]:2408',
-                help: 'Cloudflare Warp endpoints.',
-                allowEmpty: false,
-                itemValidator: validateEndpoint,
               ),
               const SwitchPref(
                 'warp.enableReservedBytes',
@@ -400,6 +411,33 @@ class SettingsPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
+          SettingsCard(
+            children: [
+              const ListPref(
+                'warp.endpoints',
+                'Endpoints',
+                icon: Symbols.list_arrow_rounded,
+                hint: 'engage.cloudflareclient.com:2408\n162.159.192.1:2408\n[2606:4700:d0::a29f:c001]:2408',
+                help: 'Cloudflare Warp endpoints.',
+                allowEmpty: false,
+                itemValidator: validateEndpoint,
+              ),
+              ListTile(
+                leading: const Icon(Symbols.manage_search_rounded),
+                title: const Text('Scan endpoints'),
+                subtitle: const Text('Find fast IPs for WARP'),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const CloudflareScannerPage(
+                      protocol: ScanProtocol.warp,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           SettingsCard(children: [const _WarpAccountTile()]),
 
           const SectionHeader('Masque'),
@@ -412,15 +450,6 @@ class SettingsPage extends StatelessWidget {
                 hint: '1.1.1.1',
                 help: 'It can be an UDP DNS, TCP DNS or DoH.',
                 validator: validateTunnelDns,
-              ),
-              const ListPref(
-                'masque.endpoints',
-                'Endpoints',
-                icon: Symbols.list_arrow_rounded,
-                hint: '162.159.198.1:443\n[2606:4700:103::1]:443',
-                help: 'Each endpoint in a new line.',
-                allowEmpty: false,
-                itemValidator: validateEndpoint,
               ),
               const TextPref(
                 'masque.sni',
@@ -472,6 +501,35 @@ class SettingsPage extends StatelessWidget {
                 min: 10,
                 max: 300,
                 suffix: ' s',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SettingsCard(
+            children: [
+              const ListPref(
+                'masque.endpoints',
+                'Endpoints',
+                icon: Symbols.list_arrow_rounded,
+                hint: '162.159.198.1:443\n[2606:4700:103::1]:443',
+                help: 'Each endpoint in a new line.',
+                allowEmpty: false,
+                itemValidator: validateEndpoint,
+              ),
+              ListTile(
+                leading: const Icon(Symbols.manage_search_rounded),
+                title: const Text('Scan endpoints'),
+                subtitle: const Text('Find fast IPs for MASQUE'),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => CloudflareScannerPage(
+                      protocol: p.masque.transport == 'h3'
+                          ? ScanProtocol.masqueH3
+                          : ScanProtocol.masqueH2,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -1175,7 +1233,9 @@ class _DeploymentTile extends StatelessWidget {
                             RadioListTile<WorkerType>(
                               value: d.type,
                               title: Text(d.type.label),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
                             ),
                         ],
                       ),

@@ -731,6 +731,24 @@ class AppState extends ChangeNotifier {
     return added.length;
   }
 
+  /// Adds scan results to the selected protocol's existing endpoint setting.
+  int installScannedIPs(List<String> ips, {required String protocol, required int port}) {
+    final path = switch (protocol) {
+      'vless' => 'vless.cleanIps',
+      'warp' => 'warp.endpoints',
+      'masque' => 'masque.endpoints',
+      _ => throw ArgumentError.value(protocol, 'protocol'),
+    };
+    final current = readList(path);
+    final values = ips.map((ip) {
+      if (protocol == 'vless') return ip;
+      return ip.contains(':') ? '[$ip]:$port' : '$ip:$port';
+    });
+    final added = values.where((value) => !current.contains(value)).toSet().toList();
+    if (added.isNotEmpty) write(path, [...current, ...added]);
+    return added.length;
+  }
+
   Future<void> testPing() async {
     if (!isConnected || pinging) return;
     pinging = true;

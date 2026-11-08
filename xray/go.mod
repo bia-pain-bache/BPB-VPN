@@ -3,9 +3,12 @@ module bpb/xray
 go 1.27
 
 require (
+	bpb/scanner v0.0.0
 	github.com/xtls/xray-core v1.260327.1-0.20261031132019-a4a3dff5b20c
 	golang.org/x/mobile v0.0.0-20260908204917-8b95e45f8d3e
 )
+
+replace bpb/scanner => ../scanner
 
 require (
 	github.com/andybalholm/brotli v1.2.3 // indirect

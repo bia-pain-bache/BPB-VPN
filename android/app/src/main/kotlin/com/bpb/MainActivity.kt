@@ -17,6 +17,7 @@ import android.os.Looper
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import androidx.core.content.FileProvider
+import org.json.JSONObject
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -25,12 +26,15 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import xray.Xray
 
 class MainActivity : FlutterActivity() {
 
     companion object {
         private const val METHOD_CHANNEL = "bpb/core"
         private const val EVENT_CHANNEL = "bpb/state"
+        private const val SCANNER_EVENT_CHANNEL = "bpb/scanner"
         private const val REQUEST_VPN = 0x0B9B
         private const val REQUEST_NOTIFICATIONS = 0x0B9C
         private const val REQUEST_PICK_FILE = 0x0B9D
@@ -42,6 +46,11 @@ class MainActivity : FlutterActivity() {
     }
 
     private val background = Executors.newFixedThreadPool(4)
+    private val scannerPoller = Executors.newSingleThreadExecutor()
+    private val scannerPolling = AtomicBoolean(false)
+    private val activityDestroyed = AtomicBoolean(false)
+    @Volatile private var scannerEventSink: EventChannel.EventSink? = null
+    private val scannerBridge by lazy { Xray.newScannerBridge() }
     private val mainHandler = Handler(Looper.getMainLooper())
     private var pendingPrepare: MethodChannel.Result? = null
     private var pendingPick: MethodChannel.Result? = null
@@ -69,10 +78,59 @@ class MainActivity : FlutterActivity() {
                 stateListener = null
             }
         })
+
+        EventChannel(messenger, SCANNER_EVENT_CHANNEL).setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                scannerEventSink = events
+                if (!scannerPolling.compareAndSet(false, true)) return
+                scannerPoller.execute {
+                    while (scannerPolling.get() && scannerEventSink === events) {
+                        val payload = scannerBridge.pollEvent(500)
+                        if (scannerEventSink !== events) break
+                        if (payload.isNotEmpty()) {
+                            mainHandler.post {
+                                if (scannerEventSink === events) events.success(payload)
+                            }
+                            val type = try {
+                                JSONObject(payload).optString("type")
+                            } catch (error: Exception) {
+                                scannerPolling.set(false)
+                                mainHandler.post {
+                                    if (scannerEventSink === events) {
+                                        events.error("SCANNER_EVENT", error.message ?: "Invalid scanner event", null)
+                                        scannerEventSink = null
+                                    }
+                                }
+                                break
+                            }
+                            if (type == "done" || type == "stopped" || type == "error") {
+                                scannerPolling.set(false)
+                                mainHandler.post {
+                                    if (scannerEventSink === events) events.endOfStream()
+                                    if (scannerEventSink === events) scannerEventSink = null
+                                }
+                                break
+                            }
+                        } else {
+                            Thread.sleep(50)
+                        }
+                    }
+                }
+            }
+
+            override fun onCancel(arguments: Any?) {
+                scannerEventSink = null
+                scannerPolling.set(false)
+            }
+        })
     }
 
     override fun onDestroy() {
+        activityDestroyed.set(true)
         stateListener?.let { CoreManager.removeListener(it) }
+        scannerPolling.set(false)
+        scannerBridge.closeScan()
+        scannerPoller.shutdown()
         background.shutdown()
         super.onDestroy()
     }
@@ -163,6 +221,50 @@ class MainActivity : FlutterActivity() {
                     CoreManager.controller.measureDelay(url)
                 }
             }
+            "scannerStart" -> {
+                val config = call.argument<String>("config")
+                if (config.isNullOrEmpty()) {
+                    result.error("ARG", "scanner config is required", null)
+                    return
+                }
+                runInBackground(result) {
+                    if (CoreManager.state != CoreManager.State.DISCONNECTED) {
+                        BpbVpnService.stop(this)
+                        val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(30)
+                        while (CoreManager.state != CoreManager.State.DISCONNECTED && System.nanoTime() < deadline) {
+                            Thread.sleep(50)
+                        }
+                    }
+                    if (activityDestroyed.get()) throw IllegalStateException("Activity closed before scanner start")
+                    if (!CoreManager.reserveScanner()) {
+                        "Could not start scanner: VPN is still active or a scan is already running"
+                    } else {
+                        try {
+                            CoreManager.initEnv(this)
+                            val error = scannerBridge.startScan(config)
+                            if (error.isNotEmpty()) {
+                                CoreManager.releaseScanner()
+                            } else {
+                                if (activityDestroyed.get()) scannerBridge.closeScan()
+                                Thread {
+                                    try {
+                                        while (scannerBridge.isRunning) Thread.sleep(100)
+                                    } finally {
+                                        CoreManager.releaseScanner()
+                                    }
+                                }.start()
+                            }
+                            error
+                        } catch (error: Exception) {
+                            CoreManager.releaseScanner()
+                            throw error
+                        }
+                    }
+                }
+            }
+            "scannerPause" -> result.success(scannerBridge.pauseScan())
+            "scannerResume" -> result.success(scannerBridge.resumeScan())
+            "scannerStop" -> result.success(scannerBridge.stopScan())
             "trafficStats" -> {
                 // Sampled by the VPN service (Xray's counters reset on each read, so it's the only reader).
                 val rate = TrafficMeter.rate

@@ -76,6 +76,110 @@ PersistentKeepalive = 25
 ''';
 
 void main() {
+  test('WARP scanner uses app WireGuard settings and selected port', () {
+    final keys = X25519KeyPair.generate();
+    final account = WarpAccount(
+      privateKey: keys.privateKey,
+      publicKey: keys.publicKey,
+      ipv6: '2606:4700:110::1/128',
+      reserved: const [1, 2, 3],
+    );
+    final configBuilder = XrayConfigBuilder(
+      Profile.fromJson({'warp': {'account': account.toJson()}}),
+      const DeviceSettings(),
+    );
+    for (final mode in ['normal', 'noise']) {
+      final outbound = configBuilder.scannerOutbound(
+        protocol: 'warp',
+        mode: mode,
+        domain: 'engage.cloudflareclient.com',
+        port: 4500,
+      );
+      final settings = outbound['settings'] as Map;
+      final peer = (settings['peers'] as List).single as Map;
+      expect(peer['endpoint'], '127.0.0.1:4500');
+      expect(settings['secretKey'], account.privateKey);
+      expect(settings['reserved'], [1, 2, 3]);
+      final stream = outbound['streamSettings'] as Map?;
+      if (mode == 'normal') {
+        expect(stream, isNull);
+      } else {
+        expect(stream?['finalmask'], isNotNull);
+        expect(stream, isNot(contains('sockopt')));
+      }
+    }
+  });
+  test('scanner builds the real VLESS outbound with the worker SNI', () {
+    final configBuilder = builder({});
+    final domain = configBuilder.scannerDomain(masque: false);
+    expect(domain, worker.customDomain);
+    final outbound = configBuilder.scannerOutbound(
+      protocol: 'vless',
+      mode: 'normal',
+      domain: domain,
+      port: 8443,
+    );
+    expect(outbound['protocol'], 'vless');
+    expect(outbound['settings'], containsPair('id', uuid));
+    expect(outbound['settings'], containsPair('port', 8443));
+    final stream = outbound['streamSettings'] as Map;
+    expect(stream, isNot(contains('sockopt')));
+    expect((stream['wsSettings'] as Map)['host'], 'vpn.example.com');
+    expect((stream['tlsSettings'] as Map)['serverName'], isA<String>());
+    expect(
+      ((stream['tlsSettings'] as Map)['serverName'] as String).toLowerCase(),
+      'vpn.example.com',
+    );
+  });
+
+  test('scanner falls back to the worker host without a custom domain', () {
+    const noCustomDomain = ActiveWorker(
+      accountId: '0123456789abcdef0123456789abcdef',
+      name: 'worker',
+      type: WorkerType.workers,
+      host: 'worker.example.com',
+    );
+    final configBuilder = XrayConfigBuilder(
+      const Profile(),
+      const DeviceSettings(),
+      worker: noCustomDomain,
+      uuid: uuid,
+    );
+    final domain = configBuilder.scannerDomain(masque: false);
+    expect(domain, noCustomDomain.host);
+    final outbound = configBuilder.scannerOutbound(
+      protocol: 'vless',
+      mode: 'fragment',
+      domain: domain,
+      port: 443,
+    );
+    final stream = outbound['streamSettings'] as Map;
+    expect(stream, isNot(contains('sockopt')));
+    expect((stream['wsSettings'] as Map)['host'], domain);
+    expect(
+      ((stream['tlsSettings'] as Map)['serverName'] as String).toLowerCase(),
+      domain,
+    );
+    expect(stream['finalmask'], isNotNull);
+  });
+
+  test('scanner reports unsupported VLESS ECH explicitly', () {
+    expect(
+      () =>
+          builder({
+            'vless': {
+              'ech': {'enabled': true},
+            },
+          }).scannerOutbound(
+            protocol: 'vless',
+            mode: 'normal',
+            domain: 'vpn.example.com',
+            port: 443,
+          ),
+      throwsStateError,
+    );
+  });
+
   final everything = <String, dynamic>{
     'general': {'enableFakeDns': true, 'enableIpv6': true},
     'vless': {

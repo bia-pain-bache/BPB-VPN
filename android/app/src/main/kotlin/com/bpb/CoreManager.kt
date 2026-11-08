@@ -53,6 +53,27 @@ object CoreManager {
 
     val controller: Controller by lazy { Xray.newController() }
 
+    private var scannerReserved = false
+
+    @Synchronized
+    fun reserveScanner(): Boolean {
+        if (scannerReserved || state != State.DISCONNECTED) return false
+        scannerReserved = true
+        return true
+    }
+
+    @Synchronized
+    fun releaseScanner() {
+        scannerReserved = false
+    }
+
+    @Synchronized
+    fun beginVpnStart(): Boolean {
+        if (scannerReserved) return false
+        setState(State.CONNECTING)
+        return true
+    }
+
     fun addListener(listener: Listener) = listeners.add(listener)
 
     fun removeListener(listener: Listener) = listeners.remove(listener)

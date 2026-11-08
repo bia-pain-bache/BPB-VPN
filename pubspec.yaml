@@ -37,6 +37,8 @@ flutter:
     # Tor bridges for the setup wizard's "Retry with Tor": bridges.json, written at build time by
     # scripts/fetch_tor_bridges.sh (required before building).
     - assets/tor/
+    # Cloudflare scanner CIDRs.
+    - assets/scanner/
   fonts:
     - family: OpenSans
       fonts:

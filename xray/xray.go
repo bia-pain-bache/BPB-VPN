@@ -10,6 +10,7 @@ package xray
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"bpb/scanner"
 	applog "github.com/xtls/xray-core/app/log"
 	commlog "github.com/xtls/xray-core/common/log"
 	xnet "github.com/xtls/xray-core/common/net"
@@ -31,6 +33,120 @@ import (
 	_ "github.com/xtls/xray-core/main/distro/all"
 	"github.com/xtls/xray-core/transport/internet/browser_dialer"
 )
+
+// ScannerBridge adapts the independent scanner API to gomobile's primitive Go types.
+// Its JSON methods are transport glue for the Android Flutter platform-channel adapter.
+type ScannerBridge struct {
+	mu     sync.Mutex
+	scan   *scanner.Scanner
+	events <-chan scanner.Event
+}
+
+func NewScannerBridge() *ScannerBridge { return &ScannerBridge{} }
+
+func (b *ScannerBridge) StartScan(optionsJSON string) string {
+	options, err := scanner.ParseOptions(optionsJSON)
+	if err != nil {
+		return err.Error()
+	}
+	var probeOptions struct {
+		Outbound json.RawMessage `json:"outbound"`
+		ProbeURL string          `json:"probeUrl"`
+	}
+	if err := json.Unmarshal([]byte(optionsJSON), &probeOptions); err != nil {
+		return fmt.Sprintf("scanner probe options: %v", err)
+	}
+	if len(probeOptions.Outbound) == 0 || probeOptions.ProbeURL == "" {
+		return "scanner outbound and probe URL are required"
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.scan != nil && b.scan.Running() {
+		return "scanner is already running"
+	}
+	probe, err := newScannerProbe()
+	if err != nil {
+		return err.Error()
+	}
+	probe.template = probeOptions.Outbound
+	probe.url = probeOptions.ProbeURL
+	scan := scanner.New(probe)
+	if err := scan.Start(context.Background(), options); err != nil {
+		return errors.Join(err, probe.Close()).Error()
+	}
+	b.scan = scan
+	b.events = scan.Events()
+	return ""
+}
+
+func (b *ScannerBridge) PauseScan() string  { return b.controlScan((*scanner.Scanner).Pause) }
+func (b *ScannerBridge) ResumeScan() string { return b.controlScan((*scanner.Scanner).Resume) }
+func (b *ScannerBridge) StopScan() string   { return b.controlScan((*scanner.Scanner).Stop) }
+
+func (b *ScannerBridge) controlScan(control func(*scanner.Scanner) error) string {
+	b.mu.Lock()
+	scan := b.scan
+	b.mu.Unlock()
+	if scan == nil {
+		return "scanner is not running"
+	}
+	if err := control(scan); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
+// PollEvent returns one JSON event, or an empty string after timeout / channel close.
+func (b *ScannerBridge) PollEvent(timeoutMillis int) string {
+	b.mu.Lock()
+	events := b.events
+	b.mu.Unlock()
+	if events == nil {
+		return ""
+	}
+	if timeoutMillis < 1 {
+		timeoutMillis = 1
+	}
+	if timeoutMillis > 5000 {
+		timeoutMillis = 5000
+	}
+	timer := time.NewTimer(time.Duration(timeoutMillis) * time.Millisecond)
+	defer timer.Stop()
+	select {
+	case event, ok := <-events:
+		if !ok {
+			b.mu.Lock()
+			if b.events == events {
+				b.events = nil
+			}
+			b.mu.Unlock()
+			return ""
+		}
+		encoded, err := json.Marshal(event)
+		if err != nil {
+			return `{"type":"error","message":"could not encode scanner event"}`
+		}
+		return string(encoded)
+	case <-timer.C:
+		return ""
+	}
+}
+
+func (b *ScannerBridge) IsRunning() bool {
+	b.mu.Lock()
+	scan := b.scan
+	b.mu.Unlock()
+	return scan != nil && scan.Running()
+}
+
+func (b *ScannerBridge) CloseScan() {
+	b.mu.Lock()
+	scan := b.scan
+	b.mu.Unlock()
+	if scan != nil && scan.Running() {
+		_ = scan.Stop()
+	}
+}
 
 // Environment variables Xray-core reads.
 const (
@@ -63,6 +179,27 @@ type Controller struct {
 	mu       sync.Mutex
 	instance *core.Instance
 	stats    stats.Manager
+}
+
+var coreReservation struct {
+	sync.Mutex
+	owner string
+}
+
+func reserveCore(owner string) error {
+	coreReservation.Lock()
+	defer coreReservation.Unlock()
+	if coreReservation.owner != "" {
+		return fmt.Errorf("cannot start %s while %s is running", owner, coreReservation.owner)
+	}
+	coreReservation.owner = owner
+	return nil
+}
+
+func releaseCore() {
+	coreReservation.Lock()
+	coreReservation.owner = ""
+	coreReservation.Unlock()
 }
 
 var registerConsole sync.Once
@@ -105,6 +242,15 @@ func (c *Controller) Start(config string, tunFd int32) error {
 	if c.instance != nil {
 		return nil
 	}
+	if err := reserveCore("VPN"); err != nil {
+		return err
+	}
+	started := false
+	defer func() {
+		if !started {
+			releaseCore()
+		}
+	}()
 	os.Setenv(envTunFd, strconv.Itoa(int(tunFd)))
 
 	parsed, err := serial.LoadJSONConfig(strings.NewReader(config))
@@ -121,6 +267,7 @@ func (c *Controller) Start(config string, tunFd int32) error {
 	}
 	c.instance = instance
 	c.stats, _ = instance.GetFeature(stats.ManagerType()).(stats.Manager)
+	started = true
 	return nil
 }
 
@@ -133,6 +280,7 @@ func (c *Controller) Stop() error {
 	}
 	err := c.instance.Close()
 	c.instance, c.stats = nil, nil
+	releaseCore()
 	return err
 }
 

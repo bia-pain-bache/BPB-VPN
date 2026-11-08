@@ -641,25 +641,30 @@ String? validateNoiseExp(String exp) {
     switch (key) {
       case 'b':
         var hex = arg.replaceAll(RegExp(r'\s'), '');
-        if (hex.startsWith('0x') || hex.startsWith('0X'))
+        if (hex.startsWith('0x') || hex.startsWith('0X')) {
           hex = hex.substring(2);
-        if (!RegExp(r'^(?:[0-9a-fA-F]{2})+$').hasMatch(hex))
+        }
+        if (!RegExp(r'^(?:[0-9a-fA-F]{2})+$').hasMatch(hex)) {
           return '<b> needs even-length hex, like <b 0x1a2b>';
+        }
       case 'r' || 'rc' || 'rd':
         final range = RegExp(r'^(\d+)(?:-(\d+))?$').firstMatch(arg);
-        if (range == null)
+        if (range == null) {
           return '<$key> needs a size, like <$key 16> or <$key 8-32>';
+        }
         final lo = int.parse(range.group(1)!);
         final hi = int.parse(range.group(2) ?? range.group(1)!);
-        if (hi < lo || hi > 65535)
+        if (hi < lo || hi > 65535) {
           return 'Size in <$key> must be 0-65535, low to high';
+        }
       case 't' || 'c' || 'n':
         if (arg.isNotEmpty) return '<$key> takes no value';
       default:
         return 'Unknown <$key>; use b, r, rc, rd, t, c or n';
     }
   }
-  if (exp.substring(last).trim().isNotEmpty)
+  if (exp.substring(last).trim().isNotEmpty) {
     return 'Unexpected text: ${exp.substring(last).trim()}';
+  }
   return segments == 0 ? 'Add at least one <…> part' : null;
 }

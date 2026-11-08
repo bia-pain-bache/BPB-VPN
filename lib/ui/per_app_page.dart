@@ -85,12 +85,14 @@ class _PerAppPageState extends State<PerAppPage> {
             child: FutureBuilder<List<InstalledApp>>(
               future: _apps,
               builder: (context, snapshot) {
-                if (snapshot.hasError)
+                if (snapshot.hasError) {
                   return Center(
                     child: Text('Could not list apps: ${snapshot.error}'),
                   );
-                if (!snapshot.hasData)
+                }
+                if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
+                }
                 final apps =
                     snapshot.data!
                         .where(

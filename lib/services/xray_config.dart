@@ -156,6 +156,67 @@ class XrayConfigBuilder {
   }) : resolver = resolver ?? systemResolve,
        _random = random ?? Random();
 
+  /// The scanner VLESS outbound uses the same domain as Best Ping.
+  String scannerDomain({required bool masque}) {
+    if (masque) return _masque.sni;
+    final selected = worker;
+    if (selected == null) throw StateError('Deploy or select a worker first.');
+    return selected.customDomain ?? selected.host;
+  }
+
+  /// Builds the real outbound used by the scanner; the native bridge replaces its address.
+  Map<String, dynamic> scannerOutbound({
+    required String protocol,
+    required String mode,
+    required String domain,
+    required int port,
+  }) {
+    if (protocol == 'vless') {
+      if (worker == null || uuid == null) {
+        throw StateError('Deploy or select a worker first.');
+      }
+      if (_vless.ech.enabled && mode != 'fragment') {
+        throw StateError('Disable VLESS ECH before scanning.');
+      }
+      final outbound = _wsOutbound(
+        'scanner',
+        domain,
+        port,
+        domain,
+        mode == 'fragment',
+      );
+      (outbound['streamSettings'] as Map<String, dynamic>).remove('sockopt');
+      return outbound;
+    }
+    if (protocol == 'warp') {
+      final outbound = _warpOutbound(
+        _warpAccount(),
+        '127.0.0.1:$port',
+        obfuscation: mode == 'noise',
+      );
+      final stream = outbound['streamSettings'];
+      if (stream is Map<String, dynamic>) stream.remove('sockopt');
+      return outbound;
+    }
+    if (protocol != 'masque-h2' && protocol != 'masque-h3') {
+      throw StateError('Unsupported scanner protocol: $protocol');
+    }
+    final account = _masque.account;
+    if (account == null) {
+      throw StateError('Register a MASQUE account before scanning.');
+    }
+    final h3 = protocol == 'masque-h3';
+    final outbound = _masqueOutbound(
+      account,
+      '$domain:$port',
+      h3: h3,
+      fragment: mode == 'fragment',
+      noises: mode == 'noise' ? _udpNoises(_masque.udpNoises) : null,
+    );
+    (outbound['streamSettings'] as Map<String, dynamic>).remove('sockopt');
+    return outbound;
+  }
+
   /// The exit for the connection being built (see [exitFor]).
   ExitNode _exit = ExitNode.worker;
 
@@ -443,7 +504,7 @@ class XrayConfigBuilder {
     final proxies = <Map<String, dynamic>>[];
     var index = 1;
 
-    final domain = p.domains.length == 1 ? p.domains[0] : p.domains[1];
+    final domain = p.customDomain ?? p.host;
     final addresses = _addressesFor(domain, isFragment);
     final ports = _vless.ports;
     final upstream = isFragment ? null : _upstream;
