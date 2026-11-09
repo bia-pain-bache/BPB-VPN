@@ -61,7 +61,8 @@ class SettingsPage extends StatelessWidget {
                 builder: (context) => AlertDialog(
                   title: const Text('Reset settings?'),
                   content: const Text(
-                    'All proxy settings return to their defaults.',
+                    'Proxy settings return to their defaults. VLESS Clean IPs, WARP and MASQUE '
+                    'endpoints and Tor custom bridges are preserved.',
                   ),
                   actions: [
                     TextButton(
@@ -342,8 +343,10 @@ class SettingsPage extends StatelessWidget {
                 'Clean IPs or domains',
                 icon: Symbols.list_arrow_rounded,
                 hint: 'www.speedtest.net\n104.16.1.1\n2606:4700::6810:84e5',
-                help: 'Set clean Cloudflare IPs or domains to boost connection speed.',
+                help: 'Set clean Cloudflare IPs or domains to boost connection speed. '
+                    'Include at least one IPv4 address.',
                 itemValidator: validateHost,
+                listValidator: validateCleanIps,
               ),
               ListTile(
                 leading: const Icon(Symbols.manage_search_rounded),
@@ -419,9 +422,9 @@ class SettingsPage extends StatelessWidget {
                 'Endpoints',
                 icon: Symbols.list_arrow_rounded,
                 hint: 'engage.cloudflareclient.com:2408\n162.159.192.1:2408\n[2606:4700:d0::a29f:c001]:2408',
-                help: 'Cloudflare Warp endpoints.',
-                allowEmpty: false,
+                help: 'Cloudflare Warp endpoints. Include at least two IPv4 endpoints.',
                 itemValidator: validateEndpoint,
+                listValidator: validateIpv4Endpoints,
               ),
               ListTile(
                 leading: const Icon(Symbols.manage_search_rounded),
@@ -513,9 +516,9 @@ class SettingsPage extends StatelessWidget {
                 'Endpoints',
                 icon: Symbols.list_arrow_rounded,
                 hint: '162.159.198.1:443\n[2606:4700:103::1]:443',
-                help: 'Each endpoint in a new line.',
-                allowEmpty: false,
+                help: 'Each endpoint in a new line. Include at least two IPv4 endpoints.',
                 itemValidator: validateEndpoint,
+                listValidator: validateIpv4Endpoints,
               ),
               ListTile(
                 leading: const Icon(Symbols.manage_search_rounded),

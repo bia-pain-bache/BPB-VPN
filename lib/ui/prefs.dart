@@ -10,6 +10,7 @@ import 'chip_menu.dart';
 import 'theme.dart';
 
 typedef Validator = String? Function(String value);
+typedef ListValidator = String? Function(List<String> values);
 
 // Setting widgets take a path into the settings: "vless.enableTcpFastOpen" (profile)
 // or "device.mtu" (this device), read and written through AppState.read/write.
@@ -145,6 +146,20 @@ String? validateHostPort(String v, {bool requirePort = false}) {
 
 /// WARP endpoints and the upstream proxy: the port is required.
 String? validateEndpoint(String v) => validateHostPort(v, requirePort: true);
+
+String? validateCleanIps(List<String> values) =>
+    values.any((v) => InternetAddress.tryParse(v)?.type == InternetAddressType.IPv4)
+    ? null
+    : 'Add at least one IPv4 address';
+
+String? validateIpv4Endpoints(List<String> values) {
+  final count = values.where((v) {
+    if (validateEndpoint(v) != null) return false;
+    final host = v.substring(0, v.lastIndexOf(':'));
+    return InternetAddress.tryParse(host)?.type == InternetAddressType.IPv4;
+  }).toSet().length;
+  return count >= 2 ? null : 'Add at least two IPv4 endpoints';
+}
 
 // DNS validators follow BPB panel's (src/settings/validators.ts); IPv6 bare, as everywhere
 // without a port.
@@ -599,6 +614,7 @@ class ListPref extends StatelessWidget {
   final String? hint;
   final String? help;
   final Validator? itemValidator;
+  final ListValidator? listValidator;
   final bool allowEmpty;
   final IconData? icon;
 
@@ -611,6 +627,7 @@ class ListPref extends StatelessWidget {
     this.hint,
     this.help,
     this.itemValidator,
+    this.listValidator,
     this.allowEmpty = true,
     this.icon,
     this.commaSeparated = true,
@@ -648,7 +665,7 @@ class ListPref extends StatelessWidget {
               final error = itemValidator?.call(item);
               if (error != null) return '$item: $error';
             }
-            return null;
+            return listValidator?.call(list);
           },
         );
         if (result != null) state.write(path, _split(result));

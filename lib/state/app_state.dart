@@ -436,9 +436,17 @@ class AppState extends ChangeNotifier {
         ThemeMode.values.asNameMap()[device.themeMode] ?? ThemeMode.system;
   }
 
-  /// Defaults everywhere (the selected deployment's VLESS settings too), keeping the private
-  /// parts (WARP account, Tor bridges…).
-  void resetSettings() => _setProfile(profile.keepingPrivate(const Profile()));
+  /// Defaults everywhere except the private parts and the configured clean IPs and endpoints.
+  void resetSettings() {
+    final current = profile;
+    _setProfile(
+      current
+          .keepingPrivate(const Profile())
+          .updated('vless.cleanIps', current.vless.cleanIps)
+          .updated('warp.endpoints', current.warp.endpoints)
+          .updated('masque.endpoints', current.masque.endpoints),
+    );
+  }
 
   void _markChangedWhileConnected() {
     if (status != VpnStatus.disconnected) needsReconnect = true;

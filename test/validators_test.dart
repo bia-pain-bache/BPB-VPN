@@ -2,6 +2,31 @@ import 'package:bpb/ui/prefs.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('clean IPs require an IPv4 address alongside optional domains and IPv6', () {
+    expect(validateCleanIps([]), isNotNull);
+    expect(validateCleanIps(['example.com', '2606:4700::1']), isNotNull);
+    expect(validateCleanIps(['999.1.1.1']), isNotNull);
+    expect(validateCleanIps(['example.com', '104.16.1.1', '2606:4700::1']), isNull);
+  });
+
+  test('endpoint lists require two distinct IPv4 endpoints', () {
+    expect(validateIpv4Endpoints([]), isNotNull);
+    expect(validateIpv4Endpoints(['162.159.192.1:2408']), isNotNull);
+    expect(validateIpv4Endpoints([
+      '162.159.192.1:2408',
+      '162.159.192.1:2408',
+      'example.com:2408',
+      '[2606:4700::1]:2408',
+    ]), isNotNull);
+    expect(validateIpv4Endpoints(['162.159.192.1:0', '162.159.192.2:70000']), isNotNull);
+    expect(validateIpv4Endpoints([
+      '162.159.192.1:2408',
+      '162.159.192.1:443',
+      'example.com:2408',
+      '[2606:4700::1]:2408',
+    ]), isNull);
+  });
+
   test('IPv6 as Xray reads it: bare without a port, [IPv6] with one', () {
     // No port (clean IPs, CDN addresses, routing rules, DNS): bare only.
     expect(validateHost('2606:4700::1'), isNull);
