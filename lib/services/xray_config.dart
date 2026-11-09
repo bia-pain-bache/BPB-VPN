@@ -729,7 +729,8 @@ class XrayConfigBuilder {
       for (final r in v23Rules)
         if ((r['inboundTag'] as List?)?.contains('no-filter-dns') ?? false) r,
       for (final r in v23Rules)
-        if ((r['outboundTag'] as String).startsWith('redirect-out-'))
+        if ((r['outboundTag'] as String).startsWith('redirect-out-') ||
+            (r['outboundTag'] as String) == 'dns-out')
           {
             'inboundTag': [_exitInbound],
             ...r,
@@ -807,18 +808,27 @@ class XrayConfigBuilder {
             'listen': '127.0.0.1',
             'port': exitUpstreamPort,
             'protocol': 'socks',
-            'settings': {'auth': 'noauth', 'udp': false},
+            'settings': {'auth': 'noauth', 'udp': true, 'ip': '127.0.0.1'},
             // The fronting rules match the domains of the exit's connections.
             if (_frontedExit)
               'sniffing': {
                 'enabled': true,
-                'destOverride': ['tls'],
-                'routeOnly': true,
+                'destOverride': ['fakedns', 'tls'],
+                'routeOnly': false,
               },
           },
       ],
       'outbounds': [
         ...outbounds,
+        {
+          'protocol': 'dns',
+          'settings': {
+            'rules': [
+              {'action': 'hijack'},
+            ],
+          },
+          'tag': 'dns-out',
+        },
         if (_chainedExit)
           {
             'tag': 'exit',
@@ -827,7 +837,7 @@ class XrayConfigBuilder {
           },
         if (_frontedExit)
           {
-            'tag': 'dns-out',
+            'tag': 'dns-out-exit',
             'protocol': 'dns',
             // Your apps' queries straight to the exit's DNS; the local DNS's domains to the DNS
             // module (it only answers A / AAAA).
@@ -845,16 +855,6 @@ class XrayConfigBuilder {
                 {'action': 'direct'},
               ],
             },
-          }
-        else
-          {
-            'protocol': 'dns',
-            'settings': {
-              'rules': [
-                {'action': 'hijack'},
-              ],
-            },
-            'tag': 'dns-out',
           },
         {
           'protocol': 'freedom',
@@ -1195,7 +1195,7 @@ class XrayConfigBuilder {
       {
         'inboundTag': ['tun', 'mixed-in'],
         'port': 53,
-        'outboundTag': 'dns-out',
+        'outboundTag': _frontedExit ? 'dns-out-exit' : 'dns-out',
       },
     ];
 
