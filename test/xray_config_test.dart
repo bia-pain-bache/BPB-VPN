@@ -970,8 +970,8 @@ void main() {
         });
         expect(inbounds[2]['sniffing'], {
           'enabled': true,
-          'destOverride': ['tls'],
-          'routeOnly': true,
+          'destOverride': ['fakedns', 'tls'],
+          'routeOnly': false,
         });
         expect(inbounds.skip(3), (original['inbounds'] as List).skip(1));
 
@@ -987,6 +987,7 @@ void main() {
           'tls-repack-fastly',
           'tls-repack-meta',
           'dns-out',
+          'dns-out-exit',
           'direct',
           'block',
         ]);
@@ -1027,6 +1028,7 @@ void main() {
             (r) =>
                 (r['inboundTag'] as List?)?.contains('no-filter-dns') ?? false,
           ),
+          {'inboundTag': ['$exit-in'], 'outboundTag': 'dns-out', 'port': 53},
           for (final r in redirects)
             {
               'inboundTag': ['$exit-in'],
@@ -1037,7 +1039,7 @@ void main() {
             'inboundTag': ['$exit-in'],
             'outboundTag': 'direct',
           },
-          {'inboundTag': yours, 'port': 53, 'outboundTag': 'dns-out'},
+          {'inboundTag': yours, 'port': 53, 'outboundTag': 'dns-out-exit'},
           {
             'inboundTag': yours,
             'domain': ['geosite:private'],
@@ -1082,11 +1084,16 @@ void main() {
             );
         expect(iran, hasLength(2));
         expect(iran.every((r) => '${r['inboundTag']}' == '$yours'), isTrue);
-        // Your apps' queries for bypass domains: dns-out hands them to the DNS module (local DNS).
-        final dnsOut = (withSettings['outbounds'] as List)
-            .cast<Map>()
-            .firstWhere((o) => o['tag'] == 'dns-out');
+        // The exit's queries go to the DNS module, while app queries use dns-out-exit.
+        final dnsOutbounds = (withSettings['outbounds'] as List).cast<Map>();
+        final dnsOut = dnsOutbounds.firstWhere((o) => o['tag'] == 'dns-out');
         expect(dnsOut['settings']['rules'], [
+          {'action': 'hijack'},
+        ]);
+        final dnsOutExit = dnsOutbounds.firstWhere(
+          (o) => o['tag'] == 'dns-out-exit',
+        );
+        expect(dnsOutExit['settings']['rules'], [
           {
             'action': 'hijack',
             'qType': '1,28',
@@ -1128,7 +1135,7 @@ void main() {
         );
         // remote-dns: your apps' queries go straight to the exit's DNS.
         final appDns = (c['outbounds'] as List).cast<Map>().firstWhere(
-          (o) => o['tag'] == 'dns-out',
+          (o) => o['tag'] == 'dns-out-exit',
         );
         expect(appDns['settings'], {
           'network': 'udp',
@@ -1750,12 +1757,16 @@ void main() {
       final noise =
           proxies.first['streamSettings']['finalmask']['udp'][0]['settings']['noise']
               as List;
-      expect(noise.length, 5); // the default: random 50-100 bytes, 5 times
-      expect(noise.first, {
-        'rand': '50-100',
-        'randRange': '0-255',
-        'delay': '1-5',
-      });
+      expect(noise, [
+        {
+          'type': 'exp',
+          'packet':
+              '<b 0x123401000001000000000000076578616d706c6503636f6d0000010001>',
+          'delay': '0',
+        },
+        for (var i = 0; i < 4; i++)
+          {'rand': '40-70', 'randRange': '0-255', 'delay': '0'},
+      ]);
       dump('warp_pro_best', c);
     });
 

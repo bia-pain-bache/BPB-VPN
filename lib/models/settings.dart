@@ -788,7 +788,19 @@ class Profile {
   final RoutingSettings routing;
 
   static const defaultUdpNoises = [
-    UdpNoise(type: NoiseType.rand, size: Range(50, 100), count: 5),
+    UdpNoise(
+      type: NoiseType.exp,
+      packet:
+          '<b 0x123401000001000000000000076578616d706c6503636f6d0000010001>',
+      count: 1,
+      delay: Range(0, 0),
+    ),
+    UdpNoise(
+      type: NoiseType.rand,
+      size: Range(40, 70),
+      count: 4,
+      delay: Range(0, 0),
+    ),
   ];
   static const defaultUdpNoiseReset = Range(30, 60);
 

@@ -296,6 +296,7 @@ class _ResetCard extends StatelessWidget {
 
 class _NoiseDraft {
   String type;
+  String? _packetType;
   final TextEditingController packet;
   final TextEditingController count;
   final TextEditingController delayMin;
@@ -311,6 +312,15 @@ class _NoiseDraft {
       count = TextEditingController(text: '$count'),
       delayMin = TextEditingController(text: delayMin),
       delayMax = TextEditingController(text: delayMax);
+
+  String get packetType => _packetType ??=
+      noiseExpPresets.entries
+          .where((entry) => entry.value == packet.text.trim())
+          .firstOrNull
+          ?.key ??
+      'None';
+
+  set packetType(String value) => _packetType = value;
 
   /// The packet field shows a random noise's size as "50-100" and an array's bytes as
   /// "1,10,128"; other types are their text as is.
@@ -373,6 +383,9 @@ class _NoiseCard extends StatelessWidget {
 
   void _generate() {
     noise.packet.text = generateNoisePacket(noise.type);
+    if (noise.type == 'exp') {
+      noise.packetType = noiseExpPresets.keys.first;
+    }
     onChanged();
   }
 
@@ -443,6 +456,30 @@ class _NoiseCard extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: kFieldGap),
+                if (noise.type == 'exp') ...[
+                  DropdownButtonFormField<String>(
+                    key: ValueKey(noise.packetType),
+                    borderRadius: BorderRadius.circular(kMenuRadius),
+                    initialValue: noise.packetType,
+                    decoration: const InputDecoration(labelText: 'Packet preset'),
+                    items: [
+                      for (final name in noiseExpPresets.keys)
+                        DropdownMenuItem(value: name, child: Text(name)),
+                      const DropdownMenuItem(
+                        value: 'None',
+                        child: Text('None'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null || value == noise.packetType) return;
+                      noise.packetType = value;
+                      noise.packet.text =
+                          noiseExpPresets[value] ?? generateCustomNoiseExp();
+                      onChanged();
+                    },
+                  ),
+                  const SizedBox(height: kFieldGap),
+                ],
                 TextFormField(
                   controller: noise.packet,
                   minLines: 1,
@@ -454,29 +491,31 @@ class _NoiseCard extends StatelessWidget {
                               '<t> timestamp · <c> counter · <n> nonce · N can be a range like 8-16'
                         : null,
                     helperMaxLines: 2,
-                    suffixIcon: noise.type == 'exp'
-                        ? PopupMenuButton<String>(
-                            tooltip: 'Presets',
-                            icon: const Icon(Symbols.auto_awesome_rounded),
-                            onSelected: (exp) {
-                              noise.packet.text = exp;
-                              onChanged();
-                            },
-                            itemBuilder: (_) => [
-                              for (final p in noiseExpPresets.entries)
-                                PopupMenuItem(
-                                  value: p.value,
-                                  child: Text(p.key),
-                                ),
-                            ],
-                          )
-                        : IconButton(
+                    suffixIcon: noise.type != 'exp'
+                        ? IconButton(
                             tooltip: 'Generate',
                             icon: const Icon(Symbols.refresh_rounded),
                             onPressed: _generate,
-                          ),
+                          )
+                        : noise.packetType == 'None'
+                        ? IconButton(
+                            tooltip: 'Generate',
+                            icon: const Icon(Symbols.refresh_rounded),
+                            onPressed: () {
+                              noise.packet.text = generateCustomNoiseExp();
+                              onChanged();
+                            },
+                          )
+                        : null,
                   ),
-                  onChanged: (_) => onChanged(),
+                  onChanged: (value) {
+                    if (noise.type == 'exp' &&
+                        noise.packetType != 'None' &&
+                        value != noiseExpPresets[noise.packetType]) {
+                      noise.packetType = 'None';
+                    }
+                    onChanged();
+                  },
                   validator: (v) =>
                       validateNoisePacket(noise.type, v?.trim() ?? ''),
                 ),
@@ -505,11 +544,10 @@ class _NoiseCard extends StatelessWidget {
                         inputFormatters: digits,
                         onChanged: (_) => onChanged(),
                         validator: (v) {
-                          final min = int.tryParse(v?.trim() ?? '') ?? 0;
-                          if (min < 1) return 'At least 1';
-                          final max =
-                              int.tryParse(noise.delayMax.text.trim()) ?? 0;
-                          return min > max ? 'Min > max' : null;
+                          final min = int.tryParse(v?.trim() ?? '');
+                          if (min == null || min < 0) return 'Enter 0 or more';
+                          final max = int.tryParse(noise.delayMax.text.trim());
+                          return max != null && min > max ? 'Min > max' : null;
                         },
                       ),
                     ),
@@ -531,10 +569,12 @@ class _NoiseCard extends StatelessWidget {
                         keyboardType: TextInputType.number,
                         inputFormatters: digits,
                         onChanged: (_) => onChanged(),
-                        validator: (v) =>
-                            (int.tryParse(v?.trim() ?? '') ?? 0) < 1
-                            ? 'At least 1'
-                            : null,
+                        validator: (v) {
+                          final max = int.tryParse(v?.trim() ?? '');
+                          return max == null || max < 0
+                              ? 'Enter 0 or more'
+                              : null;
+                        },
                       ),
                     ),
                   ],
@@ -567,6 +607,12 @@ const noiseExpPresets = {
   // Binding request: type, length 0, magic cookie, random transaction ID.
   'STUN Binding request': '<b 0x000100002112a442><r 12>',
 };
+
+/// A DNS A query for example.com with a random transaction ID.
+String generateCustomNoiseExp() {
+  final id = _random.nextInt(65536).toRadixString(16).padLeft(4, '0');
+  return '<b 0x${id}01000001000000000000076578616d706c6503636f6d0000010001>';
+}
 
 /// Random packet for a noise mode, using the panel's sizes (32-64 bytes).
 String generateNoisePacket(String mode) {

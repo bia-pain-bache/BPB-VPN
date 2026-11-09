@@ -9,6 +9,19 @@ void main() {
     expect(validateNoisePacket('exp', generateNoisePacket('exp')), isNull);
   });
 
+  test('generates a fixed-byte example.com DNS query expression', () {
+    for (var i = 0; i < 10; i++) {
+      final packet = generateCustomNoiseExp();
+      expect(
+        packet,
+        matches(
+          r'^<b 0x[0-9a-f]{4}01000001000000000000076578616d706c6503636f6d0000010001>$',
+        ),
+      );
+      expect(validateNoiseExp(packet), isNull);
+    }
+  });
+
   test('accepts every token form Xray does', () {
     for (final exp in [
       '<b 0x1a2b>',
