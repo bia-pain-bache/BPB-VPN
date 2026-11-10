@@ -916,10 +916,11 @@ enum ExitNode {
 /// The Tor type's bridge choices: none ("direct", also how the Tor exit connects), Tor's built-in
 /// bridges of a transport (pt_config.json in the Tor bundle), or the user's own (TorSettings).
 const torBridges = {
-  'direct': 'Direct',
+  'snowflake-amp': 'Snowflake AMP',
   'snowflake': 'Snowflake',
   'obfs4': 'obfs4',
   'meek': 'meek',
+  'direct': 'Direct',
   'custom': 'Custom bridges',
 };
 
@@ -1053,7 +1054,7 @@ class DeviceSettings {
     this.warpVariant = 'normal',
     this.masqueVariant = 'normal',
     this.serverlessMode = 'packet',
-    this.torBridge = 'snowflake',
+    this.torBridge = 'snowflake-amp',
     this.exitNode = ExitNode.worker,
     this.exitNodes = const {},
     this.exitChains = const {},

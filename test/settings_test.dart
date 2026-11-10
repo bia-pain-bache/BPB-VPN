@@ -365,4 +365,24 @@ void main() {
     expect(readPath(json, 'b.c.d'), true);
     expect(readPath(json, 'b.x'), isNull);
   });
+
+  group('Tor bridge choice', () {
+    test('unknown bridge falls back to Snowflake AMP', () {
+      expect(
+        DeviceSettings.fromJson({
+          'connection': {'torBridge': 'webtunnel'},
+        }).torBridge,
+        'snowflake-amp',
+      );
+    });
+
+    test('Snowflake AMP is a recognized Tor bridge choice', () {
+      expect(
+        DeviceSettings.fromJson({
+          'connection': {'torBridge': 'snowflake-amp'},
+        }).torBridge,
+        'snowflake-amp',
+      );
+    });
+  });
 }

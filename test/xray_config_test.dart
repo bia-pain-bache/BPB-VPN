@@ -825,15 +825,6 @@ void main() {
         },
       }, device).build(ConnectionMode.tor);
     });
-
-    test('unknown bridge falls back to Snowflake', () {
-      expect(
-        DeviceSettings.fromJson({
-          'connection': {'torBridge': 'webtunnel'},
-        }).torBridge,
-        'snowflake',
-      );
-    });
   });
 
   test(

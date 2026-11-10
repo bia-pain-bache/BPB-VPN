@@ -29,14 +29,18 @@ object TorExit {
     fun start(context: Context, region: String, direct: Boolean, bridge: String?, customBridges: List<String>) {
         val libDir = context.applicationInfo.nativeLibraryDir
         val dir = File(context.filesDir, "tor").apply { mkdirs() }
+        val snowflakeAmp = direct && bridge == "snowflake-amp"
         val bridges = when {
             !direct || bridge == null || bridge == "direct" -> emptyList()
             bridge == "custom" -> customBridges.ifEmpty { throw IllegalStateException("No custom bridges") }
+            snowflakeAmp -> builtInBridges(context, "snowflake").map(::snowflakeAmpBridge)
             else -> builtInBridges(context, bridge)
         }
         val dataDir = File(dir, "data")
         val torrc = File(dir, "torrc")
-        torrc.writeText(torrc(context, dataDir, libDir, region, viaXray = !direct, bridges))
+        torrc.writeText(
+            torrc(context, dataDir, libDir, region, viaXray = !direct, bridges),
+        )
         // A cookie from the last run would be stale; Tor writes a new one when it starts.
         val cookie = File(dataDir, COOKIE).apply { delete() }
 
@@ -181,6 +185,13 @@ object TorExit {
             ?: throw IllegalStateException("No built-in $transport bridges")
         return List(list.length()) { list.getString(it) }
     }
+
+    /** Lyrebird takes no command-line flags: the rendezvous is set with bridge-line arguments. */
+    internal fun snowflakeAmpBridge(bridge: String): String =
+        bridge.split(Regex("\\s+"))
+            .filterNot { it.substringBefore('=') in setOf("url", "front", "fronts", "ampcache") }
+            .joinToString(" ") + " url=https://snowflake-broker.torproject.net/ " +
+            "ampcache=https://cdn.ampproject.org/ front=www.google.com"
 
     /**
      * Tor's stdout: only what it prints before opening its log file, e.g. a bad torrc
