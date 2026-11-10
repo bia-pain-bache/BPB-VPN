@@ -172,7 +172,14 @@ class AppState extends ChangeNotifier {
   /// The connection types that can be used: Worker with an account that has both deployments,
   /// WARP / MASQUE once registered; Psiphon, Tor and Serverless always.
   List<ConnectionMode> get availableModes => [
-    for (final m in ConnectionMode.values)
+    for (final m in const [
+      ConnectionMode.worker,
+      ConnectionMode.masque,
+      ConnectionMode.warp,
+      ConnectionMode.psiphon,
+      ConnectionMode.tor,
+      ConnectionMode.serverless,
+    ])
       if (switch (m) {
         ConnectionMode.worker => deployments.isNotEmpty,
         ConnectionMode.warp => profile.warp.account != null,

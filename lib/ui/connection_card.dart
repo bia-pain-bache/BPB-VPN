@@ -181,7 +181,7 @@ class _Row extends StatelessWidget {
       height: 44,
       child: Row(
         children: [
-          Icon(icon, size: 22, color: theme.colorScheme.onSurfaceVariant),
+          Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 8),
           Text(
             label,

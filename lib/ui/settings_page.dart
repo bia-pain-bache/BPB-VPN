@@ -366,84 +366,6 @@ class SettingsPage extends StatelessWidget {
           const SizedBox(height: 16),
           SettingsCard(children: [const _CloudflareAccountsTile()]),
 
-          const SectionHeader('Warp'),
-          SettingsCard(
-            children: [
-              const TextPref(
-                'warp.remoteDns',
-                'Remote DNS',
-                icon: Symbols.outbound_rounded,
-                hint: '1.1.1.1',
-                help: 'It can be a UDP DNS, TCP DNS or DoH.',
-                validator: validateTunnelDns,
-              ),
-              const SwitchPref(
-                'warp.enableReservedBytes',
-                'Reserved bytes',
-                icon: Symbols.memory_rounded,
-                subtitle: 'May help on some ISPs',
-              ),
-              ListTile(
-                leading: const Icon(Symbols.graphic_eq_rounded),
-                title: const Text('UDP Obfuscation'),
-                subtitle: Text(
-                  '${p.udpNoises.length} noise${p.udpNoises.length == 1 ? '' : 's'}',
-                ),
-                trailing: const Icon(Symbols.chevron_right_rounded),
-                onTap: () => Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) => const NoisesPage())),
-              ),
-              const IntPref(
-                'warp.keepAlive',
-                'Keep alive interval (s)',
-                icon: Symbols.timer_rounded,
-                help: 'Keep WARP connection alive. Set 0 to disable.',
-                min: 0,
-                max: 25,
-                suffix: ' s',
-              ),
-              const IntPref(
-                'warp.speedTestInterval',
-                'Speed test interval (s)',
-                icon: Symbols.timer_rounded,
-                help: 'Interval between ping attempts to automatically find the fastest server.',
-                min: 10,
-                max: 300,
-                suffix: ' s',
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SettingsCard(
-            children: [
-              const ListPref(
-                'warp.endpoints',
-                'Endpoints',
-                icon: Symbols.list_arrow_rounded,
-                hint: 'engage.cloudflareclient.com:2408\n162.159.192.1:2408\n[2606:4700:d0::a29f:c001]:2408',
-                help: 'Cloudflare Warp endpoints. Include at least two IPv4 endpoints.',
-                itemValidator: validateEndpoint,
-                listValidator: validateIpv4Endpoints,
-              ),
-              ListTile(
-                leading: const Icon(Symbols.manage_search_rounded),
-                title: const Text('Scan endpoints'),
-                subtitle: const Text('Find fast IPs for WARP'),
-                trailing: const Icon(Symbols.chevron_right_rounded),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const CloudflareScannerPage(
-                      protocol: ScanProtocol.warp,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SettingsCard(children: [const _WarpAccountTile()]),
-
           const SectionHeader('Masque'),
           SettingsCard(
             children: [
@@ -539,6 +461,84 @@ class SettingsPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           SettingsCard(children: [const _MasqueAccountTile()]),
+
+          const SectionHeader('Warp'),
+          SettingsCard(
+            children: [
+              const TextPref(
+                'warp.remoteDns',
+                'Remote DNS',
+                icon: Symbols.outbound_rounded,
+                hint: '1.1.1.1',
+                help: 'It can be a UDP DNS, TCP DNS or DoH.',
+                validator: validateTunnelDns,
+              ),
+              const SwitchPref(
+                'warp.enableReservedBytes',
+                'Reserved bytes',
+                icon: Symbols.memory_rounded,
+                subtitle: 'May help on some ISPs',
+              ),
+              ListTile(
+                leading: const Icon(Symbols.graphic_eq_rounded),
+                title: const Text('UDP Obfuscation'),
+                subtitle: Text(
+                  '${p.udpNoises.length} noise${p.udpNoises.length == 1 ? '' : 's'}',
+                ),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const NoisesPage())),
+              ),
+              const IntPref(
+                'warp.keepAlive',
+                'Keep alive interval (s)',
+                icon: Symbols.timer_rounded,
+                help: 'Keep WARP connection alive. Set 0 to disable.',
+                min: 0,
+                max: 25,
+                suffix: ' s',
+              ),
+              const IntPref(
+                'warp.speedTestInterval',
+                'Speed test interval (s)',
+                icon: Symbols.timer_rounded,
+                help: 'Interval between ping attempts to automatically find the fastest server.',
+                min: 10,
+                max: 300,
+                suffix: ' s',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SettingsCard(
+            children: [
+              const ListPref(
+                'warp.endpoints',
+                'Endpoints',
+                icon: Symbols.list_arrow_rounded,
+                hint: 'engage.cloudflareclient.com:2408\n162.159.192.1:2408\n[2606:4700:d0::a29f:c001]:2408',
+                help: 'Cloudflare Warp endpoints. Include at least two IPv4 endpoints.',
+                itemValidator: validateEndpoint,
+                listValidator: validateIpv4Endpoints,
+              ),
+              ListTile(
+                leading: const Icon(Symbols.manage_search_rounded),
+                title: const Text('Scan endpoints'),
+                subtitle: const Text('Find fast IPs for WARP'),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const CloudflareScannerPage(
+                      protocol: ScanProtocol.warp,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SettingsCard(children: [const _WarpAccountTile()]),
 
           const SectionHeader('Tor'),
           SettingsCard(
