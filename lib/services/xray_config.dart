@@ -232,10 +232,6 @@ class XrayConfigBuilder {
   /// Domain Fronting with a Psiphon / Tor exit: the regular config, the exit's connections fronted.
   bool get _frontedExit => _v23 != null && _chainedExit;
 
-  /// Domain Fronting with an exit: the domains local-dns answers, which dns-out hands to the
-  /// DNS module (see [_buildDns]).
-  List<String> _localDnsDomains = const [];
-
   /// Anti-sanction DNS and rules: only with WARP / MASQUE / Serverless and the Default exit node
   /// (with Psiphon, Tor or a chain proxy those sites go through the exit like everything else).
   bool get _antiSanction =>
@@ -416,7 +412,6 @@ class XrayConfigBuilder {
   }) {
     _exit = exitFor(mode, device, profile.chains);
     _mode = mode;
-    _v23 = null;
     _exitType = mode == ConnectionMode.psiphon || mode == ConnectionMode.tor;
     return _build(mode, variant);
   }
@@ -668,84 +663,148 @@ class XrayConfigBuilder {
   /// plus v23's decrypting inbounds and fronting outbounds for the exit's own connections, and
   /// v23's fronted DoH as the remote DNS (see [_frontingRules], [_buildDns]).
   Future<XrayBuild> _buildDomainFronting() async {
-    final v23 = _v23 = jsonDecode(domainFrontingV23) as Map<String, dynamic>;
-    final inbounds = (v23['inbounds'] as List).cast<Map<String, dynamic>>();
-    if (_chainedExit) {
-      final outbounds = (v23['outbounds'] as List).cast<Map<String, dynamic>>();
-      final config = await _buildConfig(
-        outbounds: [
-          for (final o in outbounds)
-            if (_frontingOutbound.hasMatch(o['tag'] as String)) o,
-        ],
-        isBalancer: false,
-        outboundAddrs: const [],
-      );
-      config['__Credits__'] = v23['__Credits__'];
-      (config['routing'] as Map<String, dynamic>)['domainStrategy'] =
-          (v23['routing'] as Map<String, dynamic>)['domainStrategy'];
-      // The exit first: Xray's default for anything no rule takes.
-      final all = (config['outbounds'] as List).cast<Map<String, dynamic>>();
-      final exit = all.firstWhere((o) => o['tag'] == 'exit');
-      config['outbounds'] = [exit, ...all.where((o) => o != exit)];
-      config['inbounds'] = [
-        ...config['inbounds'] as List,
-        ...inbounds.where(
-          (i) => (i['tag'] as String).startsWith('tls-decrypt-'),
-        ),
-      ];
-      return XrayBuild(config);
+    final config = _v23 = jsonDecode(domainFrontingV23) as Map<String, dynamic>;
+
+    final geo = _geoAssets();
+    final routing = profile.routing;
+    final List<String> bypassDomain = [];
+    final List<String> bypassGeosite = [];
+    final List<String> bypassIp = [];
+    final List<String> blockDomain = [];
+    final List<String> blockIp = [];
+
+    for (final g in geo.where((g) => g.isBlock)) {
+      blockDomain.add(g.geosite);
+      if (g.geoip != null) blockIp.add(g.geoip!);
+    }
+    for (final d in routing.block.domains) {
+      blockDomain.add('domain:$d');
+    }
+    for (final i in routing.block.ips) {
+      blockIp.add(i);
     }
 
-    final config = Map<String, dynamic>.of(v23)
-      ..remove('remarks')
-      ..remove('version');
-    final mixed = inbounds.firstWhere((i) => i['tag'] == 'mixed-in');
-    config['inbounds'] = [
-      for (final inbound in _localInbounds(
-        mixed['sniffing'] as Map<String, dynamic>,
-      ))
-        if (inbound['tag'] == 'mixed-in')
-          {...inbound, 'streamSettings': mixed['streamSettings']}
-        else
-          inbound,
-      ...inbounds.where((i) => i != mixed),
-    ];
-    config['log'] = {'loglevel': device.logLevel};
-    (config['policy'] as Map<String, dynamic>)['system'] = _statsPolicy;
-    config['stats'] = <String, dynamic>{};
-    return XrayBuild(config);
-  }
+    for (final g in geo.where((g) => !g.isBlock)) {
+      bypassGeosite.add(g.geosite);
+      if (g.geoip != null) bypassIp.add(g.geoip!);
+      final server = _dnsServer(
+        'localhost',
+        domains: [g.geosite],
+        expectIPs: g.geoip != null ? [g.geoip!] : null,
+        finalQuery: true,
+      );
+      config['dns']['servers'].add(server);
+    }
+    for (final d in routing.bypass.domains) {
+      bypassDomain.add('domain:$d');
+    }
+    for (final i in routing.bypass.ips) {
+      bypassIp.add(i);
+    }
+    final totalBypass = [...bypassGeosite, ...bypassDomain];
 
-  static final _frontingOutbound = RegExp(r'^(redirect-out-|tls-repack-)');
-
-  /// Before the regular rules (limited to tun / mixed-in): v23's redirects to the decrypting
-  /// inbounds, limited to the exit's inbound; the decrypted connections' rules as is; Xray's
-  /// own lookups through v23's fronted DoH (its no-filter-dns rule); and the rest of the exit's
-  /// own connections direct.
-  List<Map<String, dynamic>> _frontingRules() {
-    final v23Rules = (_v23!['routing']['rules'] as List)
+    final dnsServers = (config['dns']['servers'] as List)
         .cast<Map<String, dynamic>>();
-    return [
-      for (final r in v23Rules)
-        if ((r['inboundTag'] as List?)?.contains('no-filter-dns') ?? false) r,
-      for (final r in v23Rules)
-        if ((r['outboundTag'] as String).startsWith('redirect-out-') ||
-            (r['outboundTag'] as String) == 'dns-out')
-          {
-            'inboundTag': [_exitInbound],
-            ...r,
-          },
-      for (final r in v23Rules)
-        if ((r['inboundTag'] as List?)?.any(
-              (t) => (t as String).startsWith('tls-decrypt-'),
-            ) ??
-            false)
-          r,
-      {
-        'inboundTag': [_exitInbound],
-        'outboundTag': 'direct',
-      },
-    ];
+    final localServer = dnsServers.firstWhere((s) => s['tag'] == 'local-dns');
+    (localServer['domains'] as List).addAll(bypassDomain);
+    final fakeServer = dnsServers.firstWhere((s) => s['tag'] == 'fake-dns');
+    (fakeServer['domains'] as List).addAll(bypassDomain);
+
+    final sniffing = {
+      'enabled': true,
+      'destOverride': ['http', 'tls', 'fakedns'],
+      'routeOnly': true,
+    };
+    final [tun, mixedIn] = _localInbounds(sniffing);
+    final inbounds = (config['inbounds'] as List).cast<Map<String, dynamic>>();
+    if (device.appMode != AppMode.proxy) inbounds.insert(0, tun);
+
+    final outbounds = (config['outbounds'] as List)
+        .cast<Map<String, dynamic>>();
+    final dnsOutbound = _dnsOutbound(
+      'dns-out',
+      false,
+      blocked: _chainedExit ? null : blockDomain,
+    );
+    outbounds.add(dnsOutbound);
+
+    var routingRules = (config['routing']['rules'] as List)
+        .cast<Map<String, dynamic>>();
+
+    for (final rule in routingRules.toList()) {
+      final inboundTags = rule['inboundTag'] as List?;
+      if (inboundTags != null && inboundTags.isEmpty) {
+        if (_chainedExit) {
+          rule['inboundTag'] = [_exitInbound];
+        } else {
+          rule.remove('inboundTag');
+        }
+      }
+
+      switch (rule['ruleTag']) {
+        case 'block-domain':
+          if (blockDomain.isNotEmpty && !_chainedExit) {
+            rule['domain'] = blockDomain;
+          } else {
+            routingRules.remove(rule);
+          }
+
+        case 'bypass-domain':
+          if (!_chainedExit) {
+            rule['domain'] = ['geosite:private', ...totalBypass];
+          } else {
+            routingRules.remove(rule);
+          }
+
+        case 'block-ip':
+          if (blockIp.isNotEmpty && !_chainedExit) {
+            rule['ip'] = blockIp;
+          } else {
+            routingRules.remove(rule);
+          }
+
+        case 'bypass-ip':
+          if (!_chainedExit) {
+            rule['ip'] = ['geoip:private', ...bypassIp];
+          } else {
+            routingRules.remove(rule);
+          }
+      }
+    }
+
+    if (_chainedExit) {
+      final exitIn = inbounds.firstWhere(
+        (inbound) => inbound['tag'] == 'mixed-in',
+      );
+      exitIn['port'] = 10828;
+      exitIn['tag'] = _exitInbound;
+      inbounds.insert(1, mixedIn);
+
+      final exitOutbounds = [
+        {
+          'tag': 'exit',
+          'protocol': 'socks',
+          'settings': {'address': '127.0.0.1', 'port': exitPort},
+        },
+        _dnsOutbound(
+          'dns-out-exit',
+          true,
+          blocked: blockDomain,
+          bypassed: totalBypass,
+        ),
+      ];
+      outbounds.insertAll(0, exitOutbounds);
+
+      final customRules = _buildRoutingRules(
+        isBalancer: false,
+        isServerless: false,
+        isWarp: false,
+        dnsOutbound: 'dns-out-exit',
+      );
+      config['routing']['rules'] = [...routingRules, ...customRules];
+    }
+
+    return XrayBuild(_clean(config));
   }
 
   /// Psiphon / Tor type: the proxy is a socks outbound to the exit process, which connects to
@@ -779,8 +838,7 @@ class XrayConfigBuilder {
     String? domainToStaticIPs,
   }) async {
     final sniffQuic = isWorkerless;
-    // Serverless (both modes): always FakeDNS, like v23.
-    final sniffFakeDns = isWorkerless || _frontedExit || _general.enableFakeDns;
+    final sniffFakeDns = isWorkerless || _general.enableFakeDns;
     final sniffing = {
       'enabled': true,
       'destOverride': [
@@ -809,52 +867,16 @@ class XrayConfigBuilder {
             'port': exitUpstreamPort,
             'protocol': 'socks',
             'settings': {'auth': 'noauth', 'udp': true, 'ip': '127.0.0.1'},
-            // The fronting rules match the domains of the exit's connections.
-            if (_frontedExit)
-              'sniffing': {
-                'enabled': true,
-                'destOverride': ['fakedns', 'tls'],
-                'routeOnly': false,
-              },
           },
       ],
       'outbounds': [
         ...outbounds,
-        {
-          'protocol': 'dns',
-          'settings': {
-            'rules': [
-              {'action': 'hijack'},
-            ],
-          },
-          'tag': 'dns-out',
-        },
+        _dnsOutbound('dns-out', false),
         if (_chainedExit)
           {
             'tag': 'exit',
             'protocol': 'socks',
             'settings': {'address': '127.0.0.1', 'port': exitPort},
-          },
-        if (_frontedExit)
-          {
-            'tag': 'dns-out-exit',
-            'protocol': 'dns',
-            // Your apps' queries straight to the exit's DNS; the local DNS's domains to the DNS
-            // module (it only answers A / AAAA).
-            'settings': {
-              'network': 'udp',
-              'address': '127.0.0.1',
-              'port': exitDnsPort,
-              'rules': [
-                if (_localDnsDomains.isNotEmpty)
-                  {
-                    'action': 'hijack',
-                    'qType': '1,28',
-                    'domain': _localDnsDomains,
-                  },
-                {'action': 'direct'},
-              ],
-            },
           },
         {
           'protocol': 'freedom',
@@ -875,8 +897,9 @@ class XrayConfigBuilder {
         'domainStrategy': profile.routing.domainStrategy.xray,
         'rules': _buildRoutingRules(
           isBalancer: isBalancer,
-          isWorkerless: isWorkerless,
+          isServerless: isWorkerless,
           isWarp: isWarp,
+          dnsOutbound: 'dns-out',
         ),
         if (isBalancer)
           'balancers': [_balancer('all-proxies', 'proxy', balancerFallback)],
@@ -900,12 +923,7 @@ class XrayConfigBuilder {
         },
       'policy': {
         'levels': {
-          '0': {
-            'connIdle': 300,
-            'handshake': 4,
-            'uplinkOnly': 1,
-            'downlinkOnly': 1,
-          },
+          '0': {'handshake': 4},
         },
         'system': _statsPolicy,
       },
@@ -985,7 +1003,7 @@ class XrayConfigBuilder {
     // The remote DNS's host: a public one's IPs in hosts; any other is resolved with the local
     // DNS (see bypassDomains), like the anti-sanction DoH.
     String? unlistedDnsHost;
-    if (!isWorkerless && !isWarp && !_exitType && !_frontedExit) {
+    if (!isWorkerless && !isWarp && !_exitType) {
       unlistedDnsHost = _addDnsHost(hosts, _vless.remoteDns.server, ipv6);
     }
     if (isWarp) unlistedDnsHost = _addDnsHost(hosts, _tunnelRemoteDns, ipv6);
@@ -1002,22 +1020,6 @@ class XrayConfigBuilder {
         hosts[host] = ips;
         servers.add(_dnsServer('https://$host/dns-query', tag: 'remote-dns'));
       });
-    } else if (_frontedExit) {
-      final v23 = _v23!['dns'] as Map<String, dynamic>;
-      final doh = (v23['servers'] as List)
-          .whereType<Map<String, dynamic>>()
-          .firstWhere((s) => s['tag'] == 'no-filter-dns');
-      // Xray's own lookups (the fronting, the exit's connections): your apps' queries go to the
-      // exit's DNS through dns-out instead.
-      servers.add({
-        'address': doh['address'],
-        'tag': 'no-filter-dns',
-        'timeoutMs': doh['timeoutMs'],
-      });
-      final v23Hosts = v23['hosts'] as Map<String, dynamic>;
-      for (final host in ['dns.redirect', 'fastly.redirect']) {
-        hosts[host] = v23Hosts[host];
-      }
     } else if (_exitType) {
       // The Psiphon / Tor types (no VLESS / WARP to go through) use the exit's own DNS server
       // on this phone: it takes the DNS module's tag ("dns", routed direct) rather than remote-dns.
@@ -1093,19 +1095,6 @@ class XrayConfigBuilder {
       }
     }
 
-    // Your apps' queries for these go to the DNS module (the local DNS); v23's Fastly front
-    // below is only Xray's own lookup.
-    _localDnsDomains = _frontedExit
-        ? [...fakeDnsDomains, ...bypassDomains]
-        : const [];
-
-    // v23's Fastly front (fastly.redirect's host), with the local DNS like v23.
-    if (_frontedExit) {
-      bypassDomains.add(
-        'full:${(_v23!['dns']['hosts'] as Map)['fastly.redirect']}',
-      );
-    }
-
     if (bypassDomains.isNotEmpty) {
       servers.add(
         _dnsServer(
@@ -1117,9 +1106,7 @@ class XrayConfigBuilder {
       fakeDnsDomains.addAll(bypassDomains);
     }
 
-    // Domain Fronting with an exit: for the local DNS's domains, the only queries of your apps
-    // dns-out hands to the DNS module; the rest get real answers from the exit's DNS.
-    if (_general.enableFakeDns || isWorkerless || _frontedExit) {
+    if (_general.enableFakeDns || isWorkerless) {
       servers.insert(
         0,
         fakeDnsDomains.isEmpty
@@ -1137,7 +1124,7 @@ class XrayConfigBuilder {
       'servers': servers,
       'queryStrategy': isWarp && !ipv6 ? 'UseIPv4' : 'UseIP',
       if (isWorkerless) 'enableParallelQuery': true,
-      if (!_frontedExit) 'tag': 'dns',
+      'tag': 'dns',
     };
   }
 
@@ -1186,17 +1173,13 @@ class XrayConfigBuilder {
 
   List<Map<String, dynamic>> _buildRoutingRules({
     required bool isBalancer,
-    required bool isWorkerless,
+    required bool isServerless,
     required bool isWarp,
+    required String dnsOutbound,
   }) {
     final exitWorkerlessRules = <Map<String, dynamic>>[];
     final rules = <Map<String, dynamic>>[
-      if (_frontedExit) ..._frontingRules(),
-      {
-        'inboundTag': ['tun', 'mixed-in'],
-        'port': 53,
-        'outboundTag': _frontedExit ? 'dns-out-exit' : 'dns-out',
-      },
+      {'port': 53, 'outboundTag': dnsOutbound},
     ];
 
     void add({
@@ -1211,10 +1194,7 @@ class XrayConfigBuilder {
       List<Map<String, dynamic>>? into,
     }) {
       (into ?? rules).add({
-        // Domain Fronting with an exit: the regular rules are for your traffic only, the exit's
-        // and the decrypted connections have theirs before them (_frontingRules).
-        'inboundTag':
-            inboundTag ?? (_frontedExit ? const ['tun', 'mixed-in'] : null),
+        'inboundTag': inboundTag,
         'domain': domain,
         'ip': ip,
         'port': port,
@@ -1251,7 +1231,7 @@ class XrayConfigBuilder {
     // for everything, UDP included.
     final tcpOnly =
         _exit == ExitNode.tor ||
-        (!isWorkerless &&
+        (!isServerless &&
             !isWarp &&
             _exit != ExitNode.psiphon &&
             _exit != ExitNode.chain);
@@ -1306,7 +1286,7 @@ class XrayConfigBuilder {
     // network: TCP and UDP are all there is, and where UDP isn't carried it's blocked above.
     const anyIp = ['0.0.0.0/0', '::/0'];
 
-    if (isWorkerless) {
+    if (isServerless) {
       final target = _hasExit ? exitWorkerlessRules : rules;
       if (!tcpOnly) {
         add(
@@ -1395,6 +1375,33 @@ class XrayConfigBuilder {
   // endregion
 
   // region outbounds
+
+  Map<String, dynamic> _dnsOutbound(
+    String tag,
+    bool isChainDns, {
+    List<String>? bypassed,
+    List<String>? blocked,
+  }) {
+    bypassed ??= [];
+    blocked ??= [];
+
+    return {
+      'tag': tag,
+      'protocol': 'dns',
+      'settings': {
+        if (isChainDns) ...{
+          'rewriteNetwork': 'udp',
+          'rewriteAddress': '127.0.0.1',
+          'rewritePort': exitDnsPort,
+        },
+        'rules': [
+          if (blocked.isNotEmpty) {'action': 'drop', 'domain': blocked},
+          if (bypassed.isNotEmpty) {'action': 'hijack', 'domain': bypassed},
+          {'action': isChainDns ? 'direct' : 'hijack'},
+        ],
+      },
+    };
+  }
 
   Map<String, dynamic> _wsOutbound(
     String tag,

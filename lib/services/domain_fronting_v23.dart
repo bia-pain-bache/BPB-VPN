@@ -1,7 +1,7 @@
-/// patterniha's MITM-DomainFronting Xray config, v23, as published
+/// Modified patterniha's MITM-DomainFronting Xray config, v23, as published
 /// (https://github.com/patterniha/MITM-DomainFronting, Xray-config/MITM-DomainFronting.json,
-/// GPL-3.0), with only the certificate files renamed to the app's bpb-cert.crt / bpb-cert.key.
-/// XrayConfigBuilder swaps in the app's own TUN and mixed inbounds, log and stats.
+/// GPL-3.0), adapted for the app's exit routing, DNS, certificate files and traffic stats.
+/// XrayConfigBuilder supplies the app's inbounds and, when selected, the exit.
 const domainFrontingV23 = r'''
 {
   "__Credits__": {
@@ -10,31 +10,12 @@ const domainFrontingV23 = r'''
     "donate2": "USDT (TRC20): TU5gKvKqcXPn8itp1DouBCwcqGHMemBm8o",
     "donate3": "TON (TON): UQAc-mZB3y7uxWHKiMmq0ORZEYgycWDWZ4V1k73HsXvTJx-i"
   },
-  "remarks": "MITM-DomainFronting_v23",
-  "version": {
-    "min": "26.2.6"
-  },
   "log": {
     "loglevel": "warning",
-    "dnsLog": false,
-    "access": "none"
-  },
-  "policy": {
-    "levels": {
-      "0": {
-        "uplinkOnly": 0,
-        "downlinkOnly": 0
-      },
-      "1": {
-        "uplinkOnly": 0,
-        "downlinkOnly": 0,
-        "connIdle": 6
-      }
-    }
+    "dnsLog": false
   },
   "dns": {
     "hosts": {
-      "geosite:category-ads-all": "#3",
       "fastly.redirect": "github.githubassets.com",
       "dns.redirect": [
         "1.1.1.1",
@@ -43,11 +24,9 @@ const domainFrontingV23 = r'''
     },
     "servers": [
       {
+        "tag": "fake-dns",
         "address": "fakedns",
         "domains": [
-          "domain:ir",
-          "geosite:private",
-          "geosite:category-ir",
           "full:github.githubassets.com"
         ]
       },
@@ -58,11 +37,9 @@ const domainFrontingV23 = r'''
         "finalQuery": true
       },
       {
+        "tag": "local-dns",
         "address": "localhost",
         "domains": [
-          "domain:ir",
-          "geosite:private",
-          "geosite:category-ir",
           "full:github.githubassets.com"
         ],
         "finalQuery": true
@@ -166,13 +143,6 @@ const domainFrontingV23 = r'''
             "maxConcurrentTry": 20
           }
         }
-      }
-    },
-    {
-      "tag": "dns-out",
-      "protocol": "dns",
-      "settings": {
-        "userLevel": 1
       }
     },
     {
@@ -320,93 +290,97 @@ const domainFrontingV23 = r'''
     "domainStrategy": "IPOnDemand",
     "rules": [
       {
-        "outboundTag": "tls-repack-dns",
+        "inboundTag": [],
+        "port": 53,
+        "outboundTag": "dns-out"
+      },
+      {
         "inboundTag": [
           "no-filter-dns"
-        ]
+        ],
+        "outboundTag": "tls-repack-dns"
       },
       {
-        "outboundTag": "dns-out",
-        "port": 53
+        "domain": [],
+        "outboundTag": "block",
+        "ruleTag": "block-domain"
       },
       {
+        "domain": [],
         "outboundTag": "direct",
-        "domain": [
-          "geosite:private",
-          "geosite:ir",
-          "geosite:khanacademy"
-        ]
+        "ruleTag": "bypass-domain"
       },
       {
-        "outboundTag": "tls-repack-google",
+        "inboundTag": [
+          "tls-decrypt-h11"
+        ],
         "domain": [
           "domain:googlevideo.com"
         ],
-        "inboundTag": [
-          "tls-decrypt-h11"
-        ]
+        "outboundTag": "tls-repack-google"
       },
       {
-        "outboundTag": "block",
         "inboundTag": [
           "tls-decrypt-h11"
-        ]
+        ],
+        "outboundTag": "block"
       },
       {
-        "outboundTag": "tls-repack-google",
+        "inboundTag": [
+          "tls-decrypt-h211"
+        ],
         "domain": [
           "geosite:google"
         ],
-        "inboundTag": [
-          "tls-decrypt-h211"
-        ]
+        "outboundTag": "tls-repack-google"
       },
       {
-        "outboundTag": "tls-repack-fastly",
+        "inboundTag": [
+          "tls-decrypt-h211"
+        ],
         "domain": [
           "geosite:fastly",
           "geosite:reddit",
           "geosite:cnn",
           "domain:buzzfeed.com"
         ],
-        "inboundTag": [
-          "tls-decrypt-h211"
-        ]
+        "outboundTag": "tls-repack-fastly"
       },
       {
-        "outboundTag": "tls-repack-meta",
+        "inboundTag": [
+          "tls-decrypt-h211"
+        ],
         "domain": [
           "geosite:meta"
         ],
-        "inboundTag": [
-          "tls-decrypt-h211"
-        ]
+        "outboundTag": "tls-repack-meta"
       },
       {
-        "outboundTag": "tls-repack-fastly",
+        "inboundTag": [
+          "tls-decrypt-h211"
+        ],
         "ip": [
           "geoip:fastly"
         ],
-        "inboundTag": [
-          "tls-decrypt-h211"
-        ]
+        "outboundTag": "tls-repack-fastly"
       },
       {
-        "outboundTag": "block",
         "inboundTag": [
           "tls-decrypt-h211"
-        ]
+        ],
+        "outboundTag": "block"
       },
       {
-        "outboundTag": "redirect-out-h11",
+        "inboundTag": [],
         "network": "tcp",
         "port": 443,
         "domain": [
           "domain:googlevideo.com"
-        ]
+        ],
+        "outboundTag": "redirect-out-h11"
       },
       {
-        "outboundTag": "redirect-out-h211",
+        "inboundTag": [],
         "network": "tcp",
         "port": 443,
         "domain": [
@@ -416,42 +390,55 @@ const domainFrontingV23 = r'''
           "geosite:reddit",
           "geosite:cnn",
           "domain:buzzfeed.com"
-        ]
+        ],
+        "outboundTag": "redirect-out-h211"
       },
       {
-        "outboundTag": "block",
-        "ip": [
-          "10.10.34.0/24",
-          "2001:4188:2:600::/64"
-        ]
-      },
-      {
-        "outboundTag": "direct",
-        "ip": [
-          "geoip:private",
-          "geoip:ir"
-        ]
-      },
-      {
-        "outboundTag": "redirect-out-h211",
+        "inboundTag": [],
         "network": "tcp",
         "port": 443,
         "ip": [
           "geoip:fastly"
-        ]
+        ],
+        "outboundTag": "redirect-out-h211"
       },
       {
+        "ip": [],
+        "outboundTag": "block",
+        "ruleTag": "block-ip"
+      },
+      {
+        "ip": [],
         "outboundTag": "direct",
+        "ruleTag": "bypass-ip"
+      },
+      {
+        "inboundTag": [],
         "ip": [
           "0.0.0.0/0",
           "::/0"
-        ]
+        ],
+        "outboundTag": "direct"
       },
       {
-        "outboundTag": "block",
-        "port": "0-65535"
+        "inboundTag": [],
+        "port": "0-65535",
+        "outboundTag": "block"
       }
     ]
-  }
+  },
+  "policy": {
+    "levels": {
+      "0": {
+        "uplinkOnly": 0,
+        "downlinkOnly": 0
+      }
+    },
+    "system": {
+      "statsOutboundUplink": true,
+      "statsOutboundDownlink": true
+    }
+  },
+  "stats": {}
 }
 ''';
