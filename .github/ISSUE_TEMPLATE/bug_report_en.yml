@@ -1,0 +1,64 @@
+name: Bug report (English)
+description: Report a problem with BPB VPN
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Connection quality issues related to ISPs are not supported here.
+        Issues that don’t include enough information to reproduce the problem will be closed immediately.
+
+        Please provide enough detail to help me reproduce the problem. Do not include passwords, private keys, or other sensitive information.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What went wrong?
+      description: Describe the problem.
+      placeholder: Tell me what happened.
+    validations:
+      required: true
+  - type: input
+    id: app_version
+    attributes:
+      label: BPB app version
+      description: Find the version in the app's About in Settings screen.
+      placeholder: For example, 1.2.3
+    validations:
+      required: true
+  - type: input
+    id: platform_device_os
+    attributes:
+      label: Platform, device, and OS version
+      placeholder: For example, Android 14 on Pixel 7
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction_steps
+    attributes:
+      label: Steps to reproduce
+      description: List the steps that trigger the problem.
+      placeholder: |
+        1. Go to ...
+        2. Tap ...
+        3. See the problem
+    validations:
+      required: true
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Expected behavior and actual behavior
+      description: What did you expect to happen, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: frequency
+    attributes:
+      label: How often does it happen?
+      description: Optional. For example, every time or occasionally.
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Screenshots or logs/configuration
+      description: Optional. Redact passwords, keys, tokens, server addresses, and other private details before sharing.

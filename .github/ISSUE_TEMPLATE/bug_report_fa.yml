@@ -1,0 +1,64 @@
+name: گزارش ایراد فنی (فارسی)
+description: گزارش مشکل در BPB VPN
+title: "[ایراد فنی]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        این بخش صرفاً به گزارش مشکلات فنی اختصاص دارد و شامل مسائل مربوط به کیفیت اتصال در اپراتورهای مختلف نمی‌شود.
+        گزارش‌هایی که توضیحات و اطلاعات کافی نداشته باشند، بدون درنگ بسته خواهند شد.
+
+        لطفاً جزئیات کافی برای بازتولید مشکل را بنویسید. گذرواژه، کلید خصوصی یا اطلاعات حساس را ارسال نکنید.
+  - type: textarea
+    id: problem
+    attributes:
+      label: چه مشکلی پیش آمده است؟
+      description: مشکل را توضیح دهید.
+      placeholder: بگویید چه اتفاقی افتاده است.
+    validations:
+      required: true
+  - type: input
+    id: app_version
+    attributes:
+      label: نسخهٔ برنامهٔ BPB
+      description: نسخه را در صفحهٔ درباره یا تنظیمات برنامه پیدا کنید.
+      placeholder: برای نمونه، ۱.۲.۳
+    validations:
+      required: true
+  - type: input
+    id: platform_device_os
+    attributes:
+      label: پلتفرم، دستگاه و نسخهٔ سیستم‌عامل
+      placeholder: برای نمونه، اندروید ۱۴ روی Pixel 7
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction_steps
+    attributes:
+      label: مراحل بازتولید مشکل
+      description: مراحلی را که باعث بروز مشکل می‌شوند، بنویسید.
+      placeholder: |
+        ۱. به ... بروید
+        ۲. روی ... بزنید
+        ۳. مشکل را مشاهده کنید
+    validations:
+      required: true
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: رفتار مورد انتظار و رفتار واقعی
+      description: انتظار داشتید چه اتفاقی بیفتد و در عمل چه اتفاقی افتاد؟
+    validations:
+      required: true
+  - type: input
+    id: frequency
+    attributes:
+      label: مشکل هر چند وقت یک‌بار رخ می‌دهد؟
+      description: اختیاری؛ برای نمونه، همیشه یا گاهی.
+  - type: textarea
+    id: attachments
+    attributes:
+      label: تصویر، گزارش خطا یا تنظیمات
+      description: اختیاری. پیش از ارسال، گذرواژه‌ها، کلیدها، توکن‌ها، نشانی سرورها و اطلاعات خصوصی را حذف کنید.
