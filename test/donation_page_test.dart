@@ -29,8 +29,8 @@ void main() {
     await tester.tap(find.text('Donation'));
     await tester.pumpAndSettle();
     expect(find.byType(DonationPage), findsOneWidget);
-    expect(find.text('Tether · BSC'), findsOneWidget);
-    expect(find.text('Tether · TRON'), findsOneWidget);
+    expect(find.text('Tether · BEP-20'), findsOneWidget);
+    expect(find.text('Tether · TRC-20'), findsOneWidget);
     expect(find.text('Tether · TON'), findsOneWidget);
   });
 
@@ -45,7 +45,7 @@ void main() {
       ),
     );
     expect(find.text('Address not configured'), findsNWidgets(3));
-    for (final network in ['BSC', 'TRON', 'TON']) {
+    for (final network in ['BEP-20', 'TRC-20', 'TON']) {
       for (final tooltip in ['Copy $network address', '$network QR code']) {
         expect(
           tester
@@ -90,8 +90,8 @@ void main() {
     );
 
     for (final (network, address) in [
-      ('BSC', 'test-bep20-address'),
-      ('TRON', 'test-trc20-address'),
+      ('BEP-20', 'test-bep20-address'),
+      ('TRC-20', 'test-trc20-address'),
       ('TON', 'test-ton-address'),
     ]) {
       await tester.tap(find.byTooltip('Copy $network address'));
@@ -112,4 +112,31 @@ void main() {
     }
     expect(tester.takeException(), isNull);
   });
+
+  for (final screenSize in [
+    const Size(320, 700),
+    const Size(400, 700),
+    const Size(800, 400),
+  ]) {
+    testWidgets('QR fills dialog width and stays square at $screenSize', (
+      tester,
+    ) async {
+      tester.view.physicalSize = screenSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(const MaterialApp(home: DonationPage()));
+      await tester.tap(find.byTooltip('BEP-20 QR code'));
+      await tester.pumpAndSettle();
+
+      final qr = find.byType(QrImageView);
+      final content = find.ancestor(of: qr, matching: find.byType(Column)).first;
+      final qrSize = tester.getSize(qr);
+      expect(qrSize.width, tester.getSize(content).width);
+      expect(qrSize.height, qrSize.width);
+      expect(qrSize.width, screenSize.width - 80 - 48);
+      expect(tester.takeException(), isNull);
+    });
+  }
 }

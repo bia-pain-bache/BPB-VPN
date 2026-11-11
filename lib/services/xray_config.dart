@@ -757,8 +757,8 @@ class XrayConfigBuilder {
           }
 
         case 'block-ip':
-          if (blockIp.isNotEmpty && !_chainedExit) {
-            rule['ip'] = blockIp;
+          if (!_chainedExit) {
+            rule['ip'] = ['10.10.34.34/24', '2001:4188:2:600:10:10:34:34/112', ...blockIp];
           } else {
             routingRules.remove(rule);
           }
@@ -1179,7 +1179,11 @@ class XrayConfigBuilder {
   }) {
     final exitWorkerlessRules = <Map<String, dynamic>>[];
     final rules = <Map<String, dynamic>>[
-      {'port': 53, 'outboundTag': dnsOutbound},
+      {
+        'inboundTag': ['tun', 'mixed-in'],
+        'port': 53,
+        'outboundTag': dnsOutbound,
+      },
     ];
 
     void add({
@@ -1218,6 +1222,10 @@ class XrayConfigBuilder {
     }
     // Domain Fronting with an exit: no DNS module tag (its local DNS is localhost, not routed).
     if (!_frontedExit) add(inboundTag: ['dns'], outbound: 'direct');
+    add(
+      ip: ['10.10.34.34/24', '2001:4188:2:600:10:10:34:34/112'],
+      outbound: 'block',
+    );
     add(domain: ['geosite:private'], outbound: 'direct');
     add(ip: ['geoip:private'], outbound: 'direct');
     // BitTorrent direct, matched by Xray's sniffers (TCP and uTP, whatever destOverride is), and

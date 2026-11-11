@@ -421,7 +421,7 @@ class _CloudflareScannerPageState extends State<CloudflareScannerPage> {
           Card(
             margin: const EdgeInsets.symmetric(horizontal: 12),
             shape: roundedShape(
-              kCardRadius,
+              kHeroRadius,
               side: BorderSide(
                 color: scheme.outlineVariant.withValues(alpha: 0.75),
                 width: 0.75,

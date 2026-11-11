@@ -1100,7 +1100,15 @@ void main() {
             'port': '0-65535',
             'outboundTag': 'block',
           },
-          {'port': 53, 'outboundTag': 'dns-out-exit'},
+          {
+            'inboundTag': ['tun', 'mixed-in'],
+            'port': 53,
+            'outboundTag': 'dns-out-exit',
+          },
+          {
+            'ip': ['10.10.34.34/24', '2001:4188:2:600:10:10:34:34/112'],
+            'outboundTag': 'block',
+          },
           {
             'domain': ['geosite:private'],
             'outboundTag': 'direct',
@@ -1295,7 +1303,7 @@ void main() {
           'tls-decrypt-h211',
         ]);
       },
-      skip: true,
+      skip: 'Domain fronting currently fails to build in proxy mode.',
     );
   });
 

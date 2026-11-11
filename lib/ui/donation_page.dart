@@ -31,12 +31,12 @@ class DonationPage extends StatelessWidget {
           children: [
             _DonationTile(
               name: 'Tether',
-              network: 'BSC',
+              network: 'BEP-20',
               address: bep20Address,
             ),
             _DonationTile(
               name: 'Tether',
-              network: 'TRON',
+              network: 'TRC-20',
               address: trc20Address,
             ),
             _DonationTile(
@@ -74,19 +74,26 @@ class _DonationTile extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('$name · $network'),
+        scrollable: true,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           spacing: 20,
           children: [
             SizedBox(
-              width: 220,
-              height: 220,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: QrImageView(
-                  data: address,
-                  backgroundColor: Colors.white,
-                  padding: const EdgeInsets.all(16),
+              width: MediaQuery.sizeOf(context).width,
+              child: AspectRatio(
+                aspectRatio: 1,
+                // QrImageView uses LayoutBuilder, which cannot report intrinsic sizes.
+                child: SizedBox.square(
+                  dimension: MediaQuery.sizeOf(context).width,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: QrImageView(
+                      data: address,
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.all(16),
+                    ),
+                  ),
                 ),
               ),
             ),
