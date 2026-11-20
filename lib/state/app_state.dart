@@ -186,7 +186,7 @@ class AppState extends ChangeNotifier {
   // region connection type
 
   /// The connection types that can be used: Worker with an account that has both deployments,
-  /// WARP / MASQUE once registered; Psiphon, Tor and Serverless always.
+  /// WARP / MASQUE once registered, SSH when configured; Psiphon, Tor and Serverless always.
   List<ConnectionMode> get availableModes => [
     for (final m in const [
       ConnectionMode.worker,
@@ -637,10 +637,8 @@ class AppState extends ChangeNotifier {
     final dnsMode =
         mode == ConnectionMode.serverless &&
         serverlessMode == ServerlessMode.dns;
-    // SSH is a Go-core SOCKS service; Psiphon / Tor remain separate native exits.
-    final exit = mode == ConnectionMode.ssh
-        ? 'ssh'
-        : dnsMode
+    // SSH is the connection; a selected Tor / Psiphon exit runs through its Xray inbound.
+    final exit = dnsMode
         ? null
         : exitType?.name ??
               const [
@@ -648,7 +646,7 @@ class AppState extends ChangeNotifier {
                 'tor',
               ].where((name) => hasInbound('$name-in')).firstOrNull;
     // The Psiphon / Tor types are already named after their exit.
-    final exitInRemark = exit != null && exitType == null && exit != 'ssh';
+    final exitInRemark = exit != null && exitType == null;
     await VpnChannel.start(
       config: build.config,
       // Shown after the app name in the notification header: "BPB · Fragment · Psiphon".
@@ -664,7 +662,7 @@ class AppState extends ChangeNotifier {
       appendHttpProxy: device.appendHttpProxy,
       proxyOnly: proxyMode,
       exit: exit,
-      exitDirect: exitType != null || mode == ConnectionMode.ssh,
+      exitDirect: exitType != null,
       exitRegion: dnsMode ? '' : device.exitRegion,
       torBridge: mode == ConnectionMode.tor ? device.torBridge : null,
       torCustomBridges: profile.tor.bridges,

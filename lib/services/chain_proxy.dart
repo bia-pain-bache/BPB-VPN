@@ -72,7 +72,7 @@ class ChainInfo {
       uri.protocol == 'http' ? const ['TCP'] : const ['TCP', 'UDP'];
 
   /// Whether a [mode] connection can carry it: WireGuard and Hysteria2 are UDP, which only WARP
-  /// and MASQUE carry (the worker relays TCP only).
+  /// and MASQUE carry. SSH and the worker carry TCP only.
   bool canChainOver(ConnectionMode mode) =>
       !isUdp || mode == ConnectionMode.warp || mode == ConnectionMode.masque;
 }

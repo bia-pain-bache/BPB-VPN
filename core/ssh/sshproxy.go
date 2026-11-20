@@ -19,6 +19,8 @@ type config struct {
 	KeepAliveInterval, TCPKeepAliveInterval                                   int
 }
 
+const socksListenAddress = "127.0.0.1:1080"
+
 // Config is the SSH settings passed from the app to the VPN core.
 type Config struct {
 	Host                 string `json:"host"`
@@ -49,7 +51,7 @@ func Start(c Config) (*Server, error) {
 		return nil, errors.New("SSH password or private key is required")
 	}
 	server := net.JoinHostPort(c.Host, strconv.Itoa(c.Port))
-	socks, err := net.Listen("tcp", "127.0.0.1:10829")
+	socks, err := net.Listen("tcp", socksListenAddress)
 	if err != nil {
 		return nil, fmt.Errorf("listen for SSH SOCKS: %w", err)
 	}

@@ -1067,7 +1067,7 @@ enum PerAppMode { off, include, exclude }
 
 /// Where traffic leaves for the internet, after the connection type's own outbound.
 enum ExitNode {
-  /// The connection itself: the worker (VLESS), WARP, or direct (Serverless).
+  /// The connection itself: worker (VLESS), WARP, SSH, or direct (Serverless).
   worker,
 
   /// A chain proxy from Settings → Chain proxies, dialed through the connection.

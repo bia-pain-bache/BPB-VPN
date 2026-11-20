@@ -26,6 +26,7 @@ class ConnectionCard extends StatelessWidget {
   }) => switch (node) {
     ExitNode.worker => switch (mode) {
       ConnectionMode.worker => const ['TCP'],
+      ConnectionMode.ssh => const ['TCP'],
       ConnectionMode.warp || ConnectionMode.masque => const ['TCP', 'UDP'],
       _ => const [],
     },
@@ -48,14 +49,12 @@ class ConnectionCard extends StatelessWidget {
     final isServerlessDns =
         state.mode == ConnectionMode.serverless &&
         state.serverlessMode == ServerlessMode.dns;
-    // The Psiphon and Tor types have no exit node to choose: only the region can change.
+    // The standalone Psiphon and Tor types have no exit node to choose: only region can change.
     final hasExitNode =
         state.mode != ConnectionMode.psiphon &&
         state.mode != ConnectionMode.tor &&
-        state.mode != ConnectionMode.ssh &&
         !isServerlessDns;
     final nodes = switch (state.mode) {
-      ConnectionMode.ssh => const <ExitNode>[],
       ConnectionMode.serverless => state.serverlessMode ==
               ServerlessMode.domainFronting
           ? [ExitNode.worker, ExitNode.psiphon]
@@ -130,7 +129,7 @@ class ConnectionCard extends StatelessWidget {
               duration: _rowAnimation,
               curve: Curves.easeInOut,
               alignment: Alignment.topCenter,
-              child: state.mode != ConnectionMode.ssh && !isServerlessDns &&
+              child: !isServerlessDns &&
                       (exit == ExitNode.psiphon || exit == ExitNode.tor)
                   ? _Row(
                       icon: Symbols.location_on_rounded,
@@ -203,7 +202,7 @@ class _Row extends StatelessWidget {
   }
 }
 
-/// Connection types. Every type except Serverless connects with a best-ping config.
+/// Connection types. Every type except Serverless uses an Xray core outbound.
 class _TypeSelector extends StatelessWidget {
   const _TypeSelector();
 

@@ -173,6 +173,8 @@ class XrayConfigBuilder {
   /// tor-in inbound, and serves SOCKS5 for the exit outbound (Psiphon: TCP and UDP; Tor: TCP).
   static const exitUpstreamPort = 10828;
   static const exitPort = 10829;
+  /// SSH's local SOCKS connection outbound, separate from the exit-process SOCKS port.
+  static const sshPort = 1080;
 
   /// The exit process's DNS server, the remote DNS of the Psiphon / Tor types: Tor's DNSPort,
   /// or Psiphon's own resolver (psiphon/dns.go).
@@ -451,7 +453,7 @@ class XrayConfigBuilder {
 
   // region top level builds
 
-  /// Serverless, or a Best Ping balancer over every worker address/port (or WARP endpoint).
+  /// Serverless, SSH SOCKS, or a Best Ping balancer over every worker address/port (or WARP endpoint).
   /// [variant] picks Worker's and WARP's config.
   Future<XrayBuild> build(
     ConnectionMode mode, {
@@ -461,8 +463,7 @@ class XrayConfigBuilder {
     _mode = mode;
     _exitType =
         mode == ConnectionMode.psiphon ||
-        mode == ConnectionMode.tor ||
-        mode == ConnectionMode.ssh;
+        mode == ConnectionMode.tor;
     return _build(mode, variant);
   }
 
@@ -491,6 +492,7 @@ class XrayConfigBuilder {
     if (mode.isWarp) {
       return _buildWarp(variant == ConnectionVariant.obfuscated);
     }
+    if (mode == ConnectionMode.ssh) return _buildSsh();
 
     final p = worker;
     if (p == null || uuid == null) {
@@ -916,6 +918,26 @@ class XrayConfigBuilder {
           'tag': 'proxy',
           'protocol': 'socks',
           'settings': {'address': '127.0.0.1', 'port': exitPort},
+        },
+      ],
+      isBalancer: false,
+      outboundAddrs: const [],
+    );
+    return XrayBuild(config);
+  }
+
+  /// SSH connection: route traffic through its local SOCKS, using the selected exit (if any).
+  Future<XrayBuild> _buildSsh() async {
+    if (!profile.ssh.isConfigured) {
+      throw StateError('Configure an SSH server first in Settings → SSH.');
+    }
+    final config = await _buildConfig(
+      outbounds: [
+        ..._chainOutbounds(),
+        {
+          'tag': 'proxy',
+          'protocol': 'socks',
+          'settings': {'address': '127.0.0.1', 'port': sshPort},
         },
       ],
       isBalancer: false,
