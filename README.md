@@ -2,14 +2,14 @@
 
 **One app. Multiple ways to stay connected.**
 
-BPB brings highly customizable Cloudflare CDN connections, Psiphon, Tor and Serverless solutions together in one approachable VPN client powered by [Xray-core](https://xtls.github.io). Start with the guided setup, then choose a ready-to-use connection or fine-tune the details for your network.
+BPB brings highly customizable Cloudflare CDN connections, Psiphon, Tor, SSH and Serverless solutions together in one approachable VPN client powered by [Xray-core](https://xtls.github.io). Start with the guided setup, then choose a ready-to-use connection or fine-tune the details for your network.
 
 > Built for networks where ordinary connections may be restricted. Results depend on your network and configuration; no method can guarantee access everywhere.
 
 ## What makes BPB different?
 
 - **Your own Cloudflare setup:** Deploy private Workers and Pages from the app using your own Cloudflare account. The guided wizard walks you through it.
-- **More than one route:** Choose VLESS, WARP, MASQUE or Serverless connections. Psiphon and Tor are also optimized, built in and can be combined with Serverless methods to bypass regular restrictions.
+- **More than one route:** Choose VLESS, WARP, MASQUE, SSH or Serverless connections. Psiphon and Tor are also optimized, built in and can be combined with Serverless methods to bypass regular restrictions.
 - **Tunable for your network:** Adjust SNI and connection IPs, TLS fingerprints, TCP fragmentation, UDP obfuscation, DNS, routing and more DPI bypassing tricks without being locked into one preset.
 - **Find responsive endpoints:** Built-in **REAL** scanners help discover Cloudflare IPs and WARP/MASQUE endpoints. Results depend on your current network and selected settings.
 - **Useful everyday controls:** Per-app proxying, proxy-chain imports, connection logs, configuration sharing and customizable theme.
