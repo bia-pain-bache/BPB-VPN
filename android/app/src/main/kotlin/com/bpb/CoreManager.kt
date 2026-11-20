@@ -216,6 +216,8 @@ object ConfigStore {
         val torCustomBridges: List<String> = emptyList(),
         /** Psiphon config fields (JSON) for the mode, added to psiphon_config.json; or null. */
         val psiphonConfig: String? = null,
+        /** SSH settings (JSON); the SSH SOCKS server runs inside the Go core process. */
+        val sshConfig: String? = null,
         /** Worker's Browser Dialer: Xray's WebSockets are opened by a WebView (see BrowserDialer). */
         val browserDialer: Boolean = false,
         /** Verify internet reachability before reporting this connection as connected. */
@@ -237,6 +239,7 @@ object ConfigStore {
             .putString("torBridge", options.torBridge)
             .putString("torCustomBridges", options.torCustomBridges.joinToString("\n"))
             .putString("psiphonConfig", options.psiphonConfig)
+            .putString("sshConfig", options.sshConfig)
             .putBoolean("browserDialer", options.browserDialer)
             .putBoolean("verifyConnection", options.verifyConnection)
             .apply()
@@ -270,6 +273,7 @@ object ConfigStore {
             torCustomBridges = prefs.getString("torCustomBridges", null)
                 ?.split('\n')?.filter { it.isNotBlank() } ?: emptyList(),
             psiphonConfig = prefs.getString("psiphonConfig", null),
+            sshConfig = prefs.getString("sshConfig", null),
             browserDialer = prefs.getBoolean("browserDialer", false),
             verifyConnection = prefs.getBoolean("verifyConnection", false),
         )

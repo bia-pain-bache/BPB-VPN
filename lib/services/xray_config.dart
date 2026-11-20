@@ -32,7 +32,10 @@ enum ConnectionMode {
   tor('Tor'),
 
   /// Direct packet mode: TLS fragmentation for TCP and UDP noise.
-  serverless('Serverless');
+  serverless('Serverless'),
+
+  /// SSH tunnel exposed to Xray as a local SOCKS5 proxy.
+  ssh('SSH');
 
   final String label;
   const ConnectionMode(this.label);
@@ -456,7 +459,10 @@ class XrayConfigBuilder {
   }) {
     _exit = exitFor(mode, device, profile.chains);
     _mode = mode;
-    _exitType = mode == ConnectionMode.psiphon || mode == ConnectionMode.tor;
+    _exitType =
+        mode == ConnectionMode.psiphon ||
+        mode == ConnectionMode.tor ||
+        mode == ConnectionMode.ssh;
     return _build(mode, variant);
   }
 
@@ -1168,6 +1174,9 @@ class XrayConfigBuilder {
 
     if (!isServerlessPacket && !isServerlessDns) {
       servers.add(_dnsServer(remoteDns, tag: 'remote-dns'));
+      if (_isExitProcess) {
+        servers.add(_dnsServer("127.0.0.1", port: 10830, tag: 'exit-dns'));
+      }
     }
 
     final geo = _geoAssets();
@@ -1344,7 +1353,7 @@ class XrayConfigBuilder {
     // Through the connection itself: the remote DNS over VLESS / WARP (also with a Psiphon / Tor
     // exit, like BPB with a chain proxy, since the connection is up first), and Psiphon / Tor
     // reaching their servers as an exit (Serverless: with fragment).
-    if (!_exitType && !_frontedExit && !isServerlessDns) {
+    if (!_frontedExit && !isServerlessDns) {
       add(
         inboundTag: [if (_hasExit) _exitInbound, 'remote-dns'],
         outbound: outTag,

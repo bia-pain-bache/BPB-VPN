@@ -25,6 +25,7 @@ import (
 
 	"bpb/core/networking"
 	"bpb/core/scanner"
+	sshproxy "bpb/core/ssh"
 	applog "github.com/xtls/xray-core/app/log"
 	commlog "github.com/xtls/xray-core/common/log"
 	xnet "github.com/xtls/xray-core/common/net"
@@ -199,9 +200,11 @@ func SetBrowserDialer(address string) {
 
 // Controller runs one Xray instance at a time.
 type Controller struct {
-	mu       sync.Mutex
-	instance *core.Instance
-	stats    stats.Manager
+	mu        sync.Mutex
+	instance  *core.Instance
+	stats     stats.Manager
+	sshConfig string
+	sshServer *sshproxy.Server
 }
 
 var coreReservation struct {
@@ -257,6 +260,18 @@ func (c *Controller) IsRunning() bool {
 	return c.instance != nil
 }
 
+// ConfigureSSH sets or clears the SSH SOCKS settings for the next Start call.
+// The service runs in this process and is stopped with the controller.
+func (c *Controller) ConfigureSSH(configJSON string) string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.instance != nil {
+		return "cannot change SSH settings while Xray is running"
+	}
+	c.sshConfig = configJSON
+	return ""
+}
+
 // Start starts an instance from the JSON config, with the TUN device tunFd (0: none, for proxy
 // mode). Does nothing while one is running.
 func (c *Controller) Start(config string, tunFd int32) error {
@@ -284,11 +299,21 @@ func (c *Controller) Start(config string, tunFd int32) error {
 	if err != nil {
 		return fmt.Errorf("core init failed: %w", err)
 	}
+	var sshServer *sshproxy.Server
+	if c.sshConfig != "" {
+		sshServer, err = sshproxy.StartJSON(c.sshConfig)
+		if err != nil {
+			instance.Close()
+			return fmt.Errorf("SSH Failed: %w", err)
+		}
+	}
 	if err := instance.Start(); err != nil {
 		instance.Close()
+		sshServer.Stop()
 		return fmt.Errorf("startup failed: %w", err)
 	}
 	c.instance = instance
+	c.sshServer = sshServer
 	c.stats, _ = instance.GetFeature(stats.ManagerType()).(stats.Manager)
 	started = true
 	return nil
@@ -298,11 +323,18 @@ func (c *Controller) Start(config string, tunFd int32) error {
 func (c *Controller) Stop() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.instance == nil {
+	if c.instance == nil && c.sshServer == nil {
 		return nil
 	}
-	err := c.instance.Close()
+	var err error
+	if c.instance != nil {
+		err = c.instance.Close()
+	}
 	c.instance, c.stats = nil, nil
+	if c.sshServer != nil {
+		c.sshServer.Stop()
+		c.sshServer = nil
+	}
 	releaseCore()
 	return err
 }

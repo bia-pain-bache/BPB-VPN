@@ -71,6 +71,7 @@ class VpnChannel {
     String? torBridge,
     List<String> torCustomBridges = const [],
     Map<String, dynamic>? psiphonConfig,
+    String? sshConfig,
     bool browserDialer = false,
     bool verifyConnection = false,
   }) => _methods.invokeMethod('start', {
@@ -92,6 +93,7 @@ class VpnChannel {
     'torCustomBridges': torCustomBridges,
     // Psiphon config fields for the mode, added to the app's psiphon_config.json (see PsiphonExit.kt).
     'psiphonConfig': psiphonConfig == null ? null : jsonEncode(psiphonConfig),
+    'sshConfig': sshConfig,
     // Worker's Browser Dialer: Xray's WebSockets are opened by a WebView (see BrowserDialer.kt).
     'browserDialer': browserDialer,
     'verifyConnection': verifyConnection,

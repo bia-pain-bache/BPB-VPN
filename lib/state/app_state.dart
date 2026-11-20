@@ -194,12 +194,14 @@ class AppState extends ChangeNotifier {
       ConnectionMode.warp,
       ConnectionMode.psiphon,
       ConnectionMode.tor,
+      ConnectionMode.ssh,
       ConnectionMode.serverless,
     ])
       if (switch (m) {
         ConnectionMode.worker => deployments.isNotEmpty,
         ConnectionMode.warp => profile.warp.account != null,
         ConnectionMode.masque => profile.masque.account != null,
+        ConnectionMode.ssh => profile.ssh.isConfigured,
         _ => true,
       })
         m,
@@ -635,8 +637,10 @@ class AppState extends ChangeNotifier {
     final dnsMode =
         mode == ConnectionMode.serverless &&
         serverlessMode == ServerlessMode.dns;
-    // The exit process: "psiphon" or "tor".
-    final exit = dnsMode
+    // SSH is a Go-core SOCKS service; Psiphon / Tor remain separate native exits.
+    final exit = mode == ConnectionMode.ssh
+        ? 'ssh'
+        : dnsMode
         ? null
         : exitType?.name ??
               const [
@@ -644,7 +648,7 @@ class AppState extends ChangeNotifier {
                 'tor',
               ].where((name) => hasInbound('$name-in')).firstOrNull;
     // The Psiphon / Tor types are already named after their exit.
-    final exitInRemark = exit != null && exitType == null;
+    final exitInRemark = exit != null && exitType == null && exit != 'ssh';
     await VpnChannel.start(
       config: build.config,
       // Shown after the app name in the notification header: "BPB · Fragment · Psiphon".
@@ -660,12 +664,15 @@ class AppState extends ChangeNotifier {
       appendHttpProxy: device.appendHttpProxy,
       proxyOnly: proxyMode,
       exit: exit,
-      exitDirect: exitType != null,
+      exitDirect: exitType != null || mode == ConnectionMode.ssh,
       exitRegion: dnsMode ? '' : device.exitRegion,
       torBridge: mode == ConnectionMode.tor ? device.torBridge : null,
       torCustomBridges: profile.tor.bridges,
       psiphonConfig: exit == 'psiphon'
           ? XrayConfigBuilder.psiphonConfigFor(mode, device)
+          : null,
+      sshConfig: mode == ConnectionMode.ssh
+          ? jsonEncode(profile.ssh.toJson())
           : null,
       browserDialer:
           mode == ConnectionMode.worker &&

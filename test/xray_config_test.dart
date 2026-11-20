@@ -672,7 +672,7 @@ void main() {
         rules.any(
           (r) => (r['inboundTag'] as List?)?.contains('remote-dns') ?? false,
         ),
-        isFalse,
+        isTrue,
       );
       expect(
         rules.any(
@@ -692,12 +692,12 @@ void main() {
         servers.singleWhere((d) => d['tag'] == 'remote-dns')['address'],
         'tcp://1.1.1.1',
       );
-      expect(servers.any((d) => d['address'] == '127.0.0.1'), isFalse);
+      expect(servers.any((d) => d['address'] == '127.0.0.1'), isTrue);
       expect(
         rules.any(
           (r) => (r['inboundTag'] as List?)?.contains('remote-dns') ?? false,
         ),
-        isFalse,
+        isTrue,
       );
       expect(
         (c['dns']['hosts'] as Map? ?? const {}).containsKey('dns.google'),
@@ -747,7 +747,7 @@ void main() {
         servers.firstWhere((d) => d['tag'] == 'remote-dns')['address'],
         'tcp://1.1.1.1',
       );
-      expect(servers.any((d) => d['address'] == '127.0.0.1'), isFalse);
+      expect(servers.any((d) => d['address'] == '127.0.0.1'), isTrue);
       expect(inboundRule(c, 'remote-dns')['balancerTag'], 'all-proxies');
       final rules = rulesOf(c);
       expect(

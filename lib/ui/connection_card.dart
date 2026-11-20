@@ -52,8 +52,10 @@ class ConnectionCard extends StatelessWidget {
     final hasExitNode =
         state.mode != ConnectionMode.psiphon &&
         state.mode != ConnectionMode.tor &&
+        state.mode != ConnectionMode.ssh &&
         !isServerlessDns;
     final nodes = switch (state.mode) {
+      ConnectionMode.ssh => const <ExitNode>[],
       ConnectionMode.serverless => state.serverlessMode ==
               ServerlessMode.domainFronting
           ? [ExitNode.worker, ExitNode.psiphon]
@@ -128,7 +130,7 @@ class ConnectionCard extends StatelessWidget {
               duration: _rowAnimation,
               curve: Curves.easeInOut,
               alignment: Alignment.topCenter,
-              child: !isServerlessDns &&
+              child: state.mode != ConnectionMode.ssh && !isServerlessDns &&
                       (exit == ExitNode.psiphon || exit == ExitNode.tor)
                   ? _Row(
                       icon: Symbols.location_on_rounded,
@@ -211,6 +213,7 @@ class _TypeSelector extends StatelessWidget {
     // CONNECT-IP over HTTP/2 or 3: HTTPS either way.
     ConnectionMode.masque => 'HTTPS',
     ConnectionMode.serverless => 'Direct',
+    ConnectionMode.ssh => 'SSH',
     // Psiphon's tunnels are all SSH based, under various obfuscation layers.
     ConnectionMode.psiphon => 'SSH',
     ConnectionMode.tor => 'Onion',

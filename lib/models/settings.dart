@@ -690,6 +690,50 @@ class ServerlessSettings {
   };
 }
 
+/// Connection credentials and transport settings for the local SSH SOCKS proxy.
+class SshSettings {
+  final String host;
+  final int port;
+  final String user;
+  final String password;
+  final String privateKey;
+  final String passphrase;
+  final int tcpKeepAliveInterval;
+  final int keepAliveInterval;
+
+  const SshSettings({
+    this.host = '', this.port = 22, this.user = '', this.password = '',
+    this.privateKey = '', this.passphrase = '',
+    this.tcpKeepAliveInterval = 15, this.keepAliveInterval = 15,
+  });
+
+  static SshSettings parse(Object? value) {
+    final j = _map(value);
+    const d = SshSettings();
+    return SshSettings(
+      host: _str(j['host'], d.host), port: _int(j['port'], d.port),
+      user: _str(j['user'], d.user), password: _str(j['password'], d.password),
+      privateKey: _str(j['privateKey'], d.privateKey),
+      passphrase: _str(j['passphrase'], d.passphrase),
+      tcpKeepAliveInterval: _int(
+        j['tcpKeepAliveInterval'],
+        d.tcpKeepAliveInterval,
+      ),
+      keepAliveInterval: _int(j['keepAliveInterval'], d.keepAliveInterval),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'host': host, 'port': port, 'user': user, 'password': password,
+    'privateKey': privateKey, 'passphrase': passphrase,
+    'tcpKeepAliveInterval': tcpKeepAliveInterval,
+    'keepAliveInterval': keepAliveInterval,
+  };
+
+  bool get isConfigured => host.trim().isNotEmpty && user.trim().isNotEmpty &&
+      (password.isNotEmpty || privateKey.trim().isNotEmpty);
+}
+
 class MasqueSettings {
   /// Transport used by MASQUE: HTTP/2 over TCP or HTTP/3 over QUIC.
   final String transport;
@@ -887,6 +931,7 @@ class Profile {
   final WarpSettings warp;
   final MasqueSettings masque;
   final ServerlessSettings serverless;
+  final SshSettings ssh;
   final TorSettings tor;
 
   /// The saved chain proxies (Settings → Chain proxies); which one a connection uses is the
@@ -926,6 +971,7 @@ class Profile {
     this.warp = const WarpSettings(),
     this.masque = const MasqueSettings(),
     this.serverless = const ServerlessSettings(),
+    this.ssh = const SshSettings(),
     this.tor = const TorSettings(),
     this.chains = const [],
     this.fragments = const [Fragment()],
@@ -940,6 +986,7 @@ class Profile {
     warp: WarpSettings.parse(j['warp']),
     masque: MasqueSettings.parse(j['masque']),
     serverless: ServerlessSettings.parse(j['serverless']),
+    ssh: SshSettings.parse(j['ssh']),
     tor: TorSettings.parse(j['tor']),
     chains: (j['chains'] as List? ?? const [])
         .map(ChainProxy.parse)
@@ -962,6 +1009,7 @@ class Profile {
     'warp': warp.toJson(),
     'masque': masque.toJson(),
     'serverless': serverless.toJson(),
+    'ssh': ssh.toJson(),
     'tor': tor.toJson(),
     'chains': chains.map((c) => c.toJson()).toList(),
     'fragments': fragments.map((f) => f.toJson()).toList(),
@@ -992,6 +1040,8 @@ class Profile {
     drop('warp', 'account');
     drop('masque', 'account');
     drop('tor', 'bridges');
+    // SSH credentials are private device data and never leave this device.
+    json.remove('ssh');
     return json;
   }
 
@@ -999,7 +1049,8 @@ class Profile {
   Profile keepingPrivate(Profile other) => other
       .updated('warp.account', warp.account?.toJson())
       .updated('masque.account', masque.account?.toJson())
-      .updated('tor.bridges', tor.bridges);
+      .updated('tor.bridges', tor.bridges)
+      .updated('ssh', ssh.toJson());
 
   /// A copy with [path] ("vless.ech.enabled") set to [value], re-validated.
   Profile updated(String path, Object? value) =>

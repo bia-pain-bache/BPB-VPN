@@ -166,6 +166,7 @@ class MainActivity : FlutterActivity() {
                         torBridge = call.argument<String>("torBridge"),
                         torCustomBridges = call.argument<List<String>>("torCustomBridges") ?: emptyList(),
                         psiphonConfig = call.argument<String>("psiphonConfig"),
+                        sshConfig = call.argument<String>("sshConfig"),
                         browserDialer = call.argument<Boolean>("browserDialer") ?: false,
                         verifyConnection = call.argument<Boolean>("verifyConnection") ?: false,
                     )

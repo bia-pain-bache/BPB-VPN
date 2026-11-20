@@ -23,6 +23,7 @@ import 'per_app_page.dart';
 import 'prefs.dart';
 import 'routing_page.dart';
 import 'tor_bridges_page.dart';
+import 'ssh_settings_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -555,6 +556,25 @@ class SettingsPage extends StatelessWidget {
                     'bridges.torproject.org or @GetBridgesBot (webtunnel, obfs4, snowflake).',
                 itemValidator: validateBridge,
                 commaSeparated: false,
+              ),
+            ],
+          ),
+
+          const SectionHeader('SSH'),
+          SettingsCard(
+            children: [
+              ListTile(
+                leading: const Icon(Symbols.key_rounded),
+                title: const Text('SSH server'),
+                subtitle: Text(
+                  p.ssh.isConfigured
+                      ? '${p.ssh.user}@${p.ssh.host}:${p.ssh.port}'
+                      : 'Connection and settings',
+                ),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SshSettingsPage()),
+                ),
               ),
             ],
           ),

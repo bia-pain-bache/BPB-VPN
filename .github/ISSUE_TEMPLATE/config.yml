@@ -1,7 +1,1 @@
 blank_issues_enabled: false
-contact_links:
-  - name: Check for duplicate issues / بررسی issueهای تکراری
-    url: https://github.com/bia-pain-bache/BPB-VPN/issues
-    about: |
-      Please check existing issues for duplicates before creating a new one.
-      لطفاً پیش از ثبت issue جدید، issueهای موجود را برای موارد تکراری بررسی کنید.

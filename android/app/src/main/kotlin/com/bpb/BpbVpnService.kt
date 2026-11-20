@@ -155,6 +155,9 @@ class BpbVpnService : VpnService() {
             CoreLog.clear(this)
             // Before the exit, which may connect through it.
             if (options.browserDialer) BrowserDialer.start(this)
+            CoreManager.controller.configureSSH(options.sshConfig ?: "").let { error ->
+                if (error.isNotEmpty()) throw IllegalStateException(error)
+            }
 
             if (options.proxyOnly) {
                 // Proxy mode: no TUN device; fd 0 tells the library not to use one.
@@ -215,6 +218,8 @@ class BpbVpnService : VpnService() {
         when (exit) {
             "psiphon" -> PsiphonExit.start(this, options.exitRegion, options.exitDirect, options.psiphonConfig)
             "tor" -> TorExit.start(this, options.exitRegion, options.exitDirect, options.torBridge, options.torCustomBridges)
+            // SSH SOCKS is owned by the Go controller and started with Xray.
+            "ssh" -> Unit
             else -> throw IllegalStateException("Unknown exit: $exit")
         }
     }
