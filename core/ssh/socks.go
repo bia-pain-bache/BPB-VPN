@@ -7,6 +7,7 @@ import (
 	"net"
 	"strconv"
 	"sync"
+	"time"
 )
 
 // SOCKS5 (RFC 1928), no authentication, CONNECT only: SSH carries TCP.
@@ -21,6 +22,10 @@ const (
 	repHostUnreach = 0x04
 	repCmdNotSupp  = 0x07
 )
+
+// handshakeTimeout bounds a client's greeting and request; a client that connects and then
+// stalls would otherwise hold a goroutine and a socket forever.
+const handshakeTimeout = 10 * time.Second
 
 // serveSocks serves until the listener fails.
 func serveSocks(ln net.Listener, s *session) error {
@@ -37,6 +42,8 @@ func serveSocks(ln net.Listener, s *session) error {
 }
 
 func handleSocks(conn net.Conn, s *session) {
+	conn.SetDeadline(time.Now().Add(s.handshakeTimeout))
+
 	// Greeting: version, methods; "no authentication" only.
 	head := make([]byte, 2)
 	if _, err := io.ReadFull(conn, head); err != nil || head[0] != socksVersion {
@@ -51,7 +58,7 @@ func handleSocks(conn net.Conn, s *session) {
 
 	// Request: version, command, reserved, address.
 	req := make([]byte, 3)
-	if _, err := io.ReadFull(conn, req); err != nil {
+	if _, err := io.ReadFull(conn, req); err != nil || req[0] != socksVersion {
 		return
 	}
 	host, port, err := readAddr(conn)
@@ -62,6 +69,8 @@ func handleSocks(conn net.Conn, s *session) {
 		reply(conn, repCmdNotSupp)
 		return
 	}
+	// Dialing may take a while (a reconnect); the handshake deadline no longer applies.
+	conn.SetDeadline(time.Time{})
 	target, err := s.dial(net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		reply(conn, repHostUnreach)

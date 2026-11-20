@@ -18,10 +18,15 @@ import (
 const (
 	dialTimeout = 20 * time.Second
 	maxBackoff  = 30 * time.Second
+	// keepaliveTimeout: how long a keepalive may go unanswered before the session counts as dead.
+	keepaliveTimeout = 10 * time.Second
 )
 
 func newSession(c config) (*session, error) {
-	s := &session{cfg: c, ready: make(chan struct{}), ctx: context.Background()}
+	s := &session{
+		cfg: c, ready: make(chan struct{}), dead: make(chan struct{}), ctx: context.Background(),
+		dialTimeout: dialTimeout, keepaliveTimeout: keepaliveTimeout, handshakeTimeout: handshakeTimeout,
+	}
 	return s, s.initialize()
 }
 
@@ -31,12 +36,18 @@ type session struct {
 	ssh    *ssh.ClientConfig
 	dialer proxy.Dialer
 	ctx    context.Context
+	// The package defaults; fields so a test can shorten them for one session.
+	dialTimeout, keepaliveTimeout, handshakeTimeout time.Duration
 
 	mu     sync.Mutex
 	client *ssh.Client
 	// ready is closed while a client is connected and replaced when it drops.
 	ready chan struct{}
 	lost  bool
+	// dead is closed, and deadErr set, when the session ends for good: wrong credentials or a
+	// changed host key on a reconnect, where retrying won't help.
+	dead    chan struct{}
+	deadErr error
 }
 
 // errAuth: wrong credentials or host key; retrying won't help.
@@ -83,7 +94,9 @@ func (s *session) initialize() error {
 		User:            c.User,
 		Auth:            auth,
 		HostKeyCallback: s.checkHostKey,
-		Timeout:         dialTimeout,
+		// Timeout only bounds ssh.Dial's TCP connect, which isn't used here; connectContext
+		// bounds the dial and the handshake itself.
+		Timeout: dialTimeout,
 	}
 	return nil
 }
@@ -113,23 +126,49 @@ func parseKey(key, passphrase string) (ssh.Signer, error) {
 // app pins it).
 func (s *session) checkHostKey(_ string, _ net.Addr, key ssh.PublicKey) error {
 	got := ssh.FingerprintSHA256(key)
-	if s.cfg.HostKey == "" {
+	s.mu.Lock()
+	pinned := s.cfg.HostKey
+	if pinned == "" {
 		s.cfg.HostKey = got
+	}
+	s.mu.Unlock()
+	if pinned == "" {
 		log.Printf("SSH host key: %s", got)
 		return nil
 	}
-	if got != s.cfg.HostKey {
-		return errAuth{fmt.Errorf("the server's host key changed: expected %s, got %s", s.cfg.HostKey, got)}
+	if got != pinned {
+		return errAuth{fmt.Errorf("the server's host key changed: expected %s, got %s", pinned, got)}
 	}
 	return nil
 }
 
+// dialContext dials addr through d, honoring ctx where d supports it (net.Dialer and the
+// SOCKS5 dialer do, including the SOCKS handshake).
+func dialContext(ctx context.Context, d proxy.Dialer, addr string) (net.Conn, error) {
+	if cd, ok := d.(proxy.ContextDialer); ok {
+		return cd.DialContext(ctx, "tcp", addr)
+	}
+	return d.Dial("tcp", addr)
+}
+
 func (s *session) connect() (*ssh.Client, error) {
-	conn, err := s.dialer.Dial("tcp", s.cfg.Server)
+	return s.connectContext(s.ctx)
+}
+
+// connectContext dials and handshakes, giving up when ctx ends or after dialTimeout.
+func (s *session) connectContext(ctx context.Context) (*ssh.Client, error) {
+	dctx, cancel := context.WithTimeout(ctx, s.dialTimeout)
+	defer cancel()
+	conn, err := dialContext(dctx, s.dialer, s.cfg.Server)
 	if err != nil {
 		return nil, err
 	}
+	// Bound the handshake, and abort it when ctx ends. A peer that accepts the connection and
+	// then says nothing would otherwise block NewClientConn forever.
+	conn.SetDeadline(time.Now().Add(s.dialTimeout))
+	stop := context.AfterFunc(ctx, func() { conn.Close() })
 	c, chans, reqs, err := ssh.NewClientConn(conn, s.cfg.Server, s.ssh)
+	stop()
 	if err != nil {
 		conn.Close()
 		var hostKey errAuth
@@ -138,6 +177,7 @@ func (s *session) connect() (*ssh.Client, error) {
 		}
 		return nil, err
 	}
+	conn.SetDeadline(time.Time{})
 	return ssh.NewClient(c, chans, reqs), nil
 }
 
@@ -148,11 +188,12 @@ func (s *session) connectFirst() error {
 }
 
 func (s *session) connectFirstContext(ctx context.Context) error {
+	var last error
 	for backoff := time.Second; ; backoff = min(backoff*2, maxBackoff) {
-		if err := ctx.Err(); err != nil {
-			return err
+		if ctx.Err() != nil {
+			return s.connectFailure(ctx, last)
 		}
-		c, err := s.connect()
+		c, err := s.connectContext(ctx)
 		if err == nil {
 			log.Printf("connected to %s", s.cfg.Server)
 			s.use(c)
@@ -162,20 +203,41 @@ func (s *session) connectFirstContext(ctx context.Context) error {
 		if errors.As(err, &auth) {
 			return err
 		}
+		if ctx.Err() != nil {
+			return s.connectFailure(ctx, last)
+		}
+		last = err
 		log.Printf("connecting to %s: %v (retrying in %s)", s.cfg.Server, err, backoff)
 		timer := time.NewTimer(backoff)
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			return ctx.Err()
+			return s.connectFailure(ctx, last)
 		case <-timer.C:
 		}
 	}
 }
 
+// connectFailure is the error for a first connection that ctx cut short, with the last
+// attempt's error when there was one (a bare "context deadline exceeded" says nothing).
+func (s *session) connectFailure(ctx context.Context, last error) error {
+	if last != nil {
+		return fmt.Errorf("connecting to %s: %w (last error: %v)", s.cfg.Server, ctx.Err(), last)
+	}
+	return fmt.Errorf("connecting to %s: %w", s.cfg.Server, ctx.Err())
+}
+
 // use makes c the session's client and watches it.
 func (s *session) use(c *ssh.Client) {
 	s.mu.Lock()
+	// Checked under the lock, so a client that finishes connecting while the session is being
+	// stopped is closed here rather than left running: Stop cancels ctx before it closes the
+	// current client.
+	if s.ctx.Err() != nil {
+		s.mu.Unlock()
+		c.Close()
+		return
+	}
 	s.client = c
 	close(s.ready)
 	wasLost := s.lost
@@ -205,11 +267,33 @@ func (s *session) watch(c *ssh.Client) {
 		case <-done:
 			s.drop(c)
 			return
+		case <-s.ctx.Done():
+			c.Close()
+			return
 		case <-t.C:
-			if _, _, err := c.SendRequest("keepalive@openssh.com", true, nil); err != nil {
-				c.Close()
+			if !alive(c, s.keepaliveTimeout) {
+				c.Close() // makes Wait return, so the next loop reconnects
 			}
 		}
+	}
+}
+
+// alive sends one keepalive and reports whether it was answered in time. SendRequest has no
+// timeout of its own: on a path that silently stops forwarding it blocks until the connection
+// closes, so a probe that goes unanswered is abandoned by closing the client.
+func alive(c *ssh.Client, timeout time.Duration) bool {
+	res := make(chan error, 1)
+	go func() {
+		_, _, err := c.SendRequest("keepalive@openssh.com", true, nil)
+		res <- err
+	}()
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case err := <-res:
+		return err == nil
+	case <-timer.C:
+		return false
 	}
 }
 
@@ -229,15 +313,19 @@ func (s *session) drop(c *ssh.Client) {
 		if s.ctx.Err() != nil {
 			return
 		}
-		next, err := s.connect()
+		next, err := s.connectContext(s.ctx)
 		if err == nil {
 			log.Printf("reconnected to %s", s.cfg.Server)
 			s.use(next)
 			return
 		}
+		if s.ctx.Err() != nil {
+			return
+		}
 		var auth errAuth
 		if errors.As(err, &auth) {
 			log.Printf("SSH reconnect stopped: %v", err)
+			s.fatal(err)
 			return
 		}
 		log.Printf("reconnecting to %s: %v (retrying in %s)", s.cfg.Server, err, backoff)
@@ -249,6 +337,25 @@ func (s *session) drop(c *ssh.Client) {
 		case <-timer.C:
 		}
 	}
+}
+
+// fatal ends the session for good: connections fail at once with err instead of waiting for a
+// reconnect that will never come.
+func (s *session) fatal(err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.deadErr != nil || s.ctx.Err() != nil {
+		return
+	}
+	s.deadErr = err
+	close(s.dead)
+}
+
+// err is why the session ended for good, or nil.
+func (s *session) err() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.deadErr
 }
 
 func (s *session) close() {
@@ -268,9 +375,15 @@ func (s *session) dial(addr string) (net.Conn, error) {
 	c, ready := s.client, s.ready
 	s.mu.Unlock()
 	if c == nil {
+		timer := time.NewTimer(s.dialTimeout)
+		defer timer.Stop()
 		select {
 		case <-ready:
-		case <-time.After(dialTimeout):
+		case <-s.dead:
+			return nil, fmt.Errorf("SSH session stopped: %w", s.err())
+		case <-s.ctx.Done():
+			return nil, errors.New("SSH session is closed")
+		case <-timer.C:
 			return nil, errors.New("SSH session is reconnecting")
 		}
 		s.mu.Lock()
