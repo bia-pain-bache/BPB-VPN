@@ -70,7 +70,7 @@ android {
 }
 
 dependencies {
-    // Xray core, built from xray/ (scripts/build_xray.sh)
+    // Xray core, built from core/ (scripts/build_xray.sh)
     implementation(files("libs/xray.aar"))
     // FileProvider, for sharing exported settings files.
     implementation("androidx.core:core:1.13.1")

@@ -43,8 +43,8 @@ jobs:
           cache: false
 
       - name: Validate bundled scanner CIDRs
-        working-directory: scanner
-        run: go run ./cmd/normalize_scanner_cidrs --check ../assets/scanner
+        working-directory: core
+        run: go run ./scanner/cmd/normalize_scanner_cidrs --check ../assets/scanner
 
       - uses: subosito/flutter-action@v2
         with:
@@ -60,7 +60,7 @@ jobs:
       - name: Tor and lyrebird (Tor Project's expert bundles, hash-checked)
         run: bash scripts/fetch_tor.sh
 
-      - name: Xray core (built from xray/ with gomobile and the NDK)
+      - name: BPB core (built from core/ with gomobile and the NDK)
         env:
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
         run: bash scripts/build_xray.sh

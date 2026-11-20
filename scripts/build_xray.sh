@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Builds the app's Xray core (xray/: Xray-core and a small Android API around it) with gomobile
+# Builds the app's core (core/: Xray-core, tools, scanners... and a small Android API around it) with gomobile
 # into android/app/libs/xray.aar, for every Android ABI. Needs the Android SDK and NDK; Go is
-# the version in xray/go.mod (Xray-core's), and gomobile the one pinned there too.
+# the version in core/go.mod, and gomobile the one pinned there too.
 set -euo pipefail
-cd "$(dirname "$0")/../xray"
+cd "$(dirname "$0")/../core"
 
 export ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:?Set ANDROID_HOME to the Android SDK}}"
 export ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$(ls -d "$ANDROID_HOME"/ndk/* | sort -V | tail -1)}"

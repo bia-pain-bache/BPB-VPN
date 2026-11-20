@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"bpb/networking"
-	"bpb/scanner"
+	"bpb/core/networking"
+	"bpb/core/scanner"
 	applog "github.com/xtls/xray-core/app/log"
 	commlog "github.com/xtls/xray-core/common/log"
 	xnet "github.com/xtls/xray-core/common/net"

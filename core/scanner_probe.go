@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"bpb/scanner"
+	"bpb/core/scanner"
 	xnet "github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/session"
 	"github.com/xtls/xray-core/core"
