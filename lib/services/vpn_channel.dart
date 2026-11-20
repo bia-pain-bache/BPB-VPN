@@ -26,7 +26,7 @@ class InstalledApp {
   const InstalledApp(this.packageName, this.label, this.isSystem, this.icon);
 }
 
-/// Bridge to the Android VPN service and Xray core (see MainActivity.kt).
+/// Bridge to the Android VPN service and BPB core (see MainActivity.kt).
 class VpnChannel {
   static const _methods = MethodChannel('bpb/core');
   static const _events = EventChannel('bpb/state');

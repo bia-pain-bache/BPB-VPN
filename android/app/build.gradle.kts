@@ -63,15 +63,15 @@ android {
 
     packaging {
         jniLibs {
-            // Xray core ships as a large .so; keep it compressed in the APK.
+            // BPB core ships as a large .so; keep it compressed in the APK.
             useLegacyPackaging = true
         }
     }
 }
 
 dependencies {
-    // Xray core, built from core/ (scripts/build_xray.sh)
-    implementation(files("libs/xray.aar"))
+    // BPB core, built from core/ (scripts/build_core.sh)
+    implementation(files("libs/core.aar"))
     // FileProvider, for sharing exported settings files.
     implementation("androidx.core:core:1.13.1")
     testImplementation("junit:junit:4.13.2")

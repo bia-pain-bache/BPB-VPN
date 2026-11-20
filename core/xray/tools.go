@@ -1,6 +1,6 @@
 //go:build tools
 
-// Keeps gomobile in go.mod, so scripts/build_xray.sh builds with the pinned version.
+// Keeps gomobile in go.mod, so scripts/build_core.sh builds with the pinned version.
 package xray
 
 import (

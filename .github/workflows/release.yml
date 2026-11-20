@@ -63,7 +63,7 @@ jobs:
       - name: BPB core (built from core/ with gomobile and the NDK)
         env:
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
-        run: bash scripts/build_xray.sh
+        run: bash scripts/build_core.sh
 
       - name: Free Go build cache before APK packaging
         run: |

@@ -12,7 +12,7 @@ import java.security.MessageDigest
 import java.util.concurrent.CopyOnWriteArraySet
 
 /**
- * Process-wide owner of the Xray core instance and the VPN connection state.
+ * Process-wide owner of the BPB core instance and the VPN connection state.
  * The VPN service, the quick settings tile and the Flutter bridge all live in
  * the same process and talk to each other through this object.
  */
