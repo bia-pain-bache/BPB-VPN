@@ -82,6 +82,7 @@ void main() {
       ConnectionMode.worker,
       ConnectionMode.warp,
       ConnectionMode.masque,
+      ConnectionMode.ssh,
     ]);
   });
 

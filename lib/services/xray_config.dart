@@ -47,7 +47,7 @@ enum ConnectionMode {
   bool get isWarpLike => this == warp || this == masque;
 
   /// Modes whose running connection is checked before it is reported as connected.
-  bool get verifiesConnection => this == worker || isWarpLike;
+  bool get verifiesConnection => this == worker || isWarpLike || this == ssh;
 
   /// Modes that connect through the deployed worker.
   bool get needsWorker => this == worker;

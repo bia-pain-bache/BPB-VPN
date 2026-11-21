@@ -56,7 +56,6 @@ func Start(c Config) (*Server, error) {
 		return nil, fmt.Errorf("listen for SSH SOCKS: %w", err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	startCtx, startCancel := context.WithTimeout(ctx, time.Minute)
 	s, err := newSession(config{
 		Server: server, User: c.User, Password: c.Password,
 		PrivateKey: c.PrivateKey, Passphrase: c.Passphrase,
@@ -64,19 +63,27 @@ func Start(c Config) (*Server, error) {
 		TCPKeepAliveInterval: c.TCPKeepAliveInterval,
 	})
 	if err != nil {
-		startCancel()
 		cancel()
 		socks.Close()
 		return nil, err
 	}
 	s.ctx = ctx
-	if err := s.connectFirstContext(startCtx); err != nil {
-		startCancel()
-		cancel()
-		socks.Close()
-		return nil, err
-	}
-	startCancel()
+
+	// Connect asynchronously so Start() returns immediately. The SOCKS listener
+	// is already open; dials through the session wait on its ready channel until
+	// the first connection is established or the session fails permanently.
+	go func() {
+		startCtx, startCancel := context.WithTimeout(ctx, time.Minute)
+		defer startCancel()
+		if err := s.connectFirstContext(startCtx); err != nil {
+			log.Printf("SSH initial connection to %s: %v", s.cfg.Server, err)
+			var auth errAuth
+			if errors.As(err, &auth) {
+				s.fatal(err)
+			}
+		}
+	}()
+
 	proxy := &Server{listener: socks, session: s, cancel: cancel, done: make(chan struct{})}
 	go func() {
 		defer close(proxy.done)
