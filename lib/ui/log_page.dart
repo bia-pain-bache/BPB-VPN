@@ -47,7 +47,7 @@ class _LogPageState extends State<LogPage> {
     super.initState();
     _scroll.addListener(() {
       if (!_scroll.hasClients) return;
-      _follow = _scroll.position.pixels >= _scroll.position.maxScrollExtent - 24;
+      _follow = _scroll.position.pixels <= 24;
     });
     _load();
     _poll = Timer.periodic(const Duration(seconds: 1), (_) => _load());
@@ -74,14 +74,11 @@ class _LogPageState extends State<LogPage> {
     if (!mounted || log != _log) return;
     final available = _logs.keys.where((l) => l == 'xray' || (sizes[l] ?? 0) > 0).toList();
     if (available.join() != _available.join()) setState(() => _available = available);
-    final lines = text.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    final tail = text.length > 200000 ? text.substring(text.length - 200000) : text;
+    var lines = tail.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    if (lines.length > _maxLines) lines = lines.sublist(lines.length - _maxLines);
     if (lines.length == _lines.length && (lines.isEmpty || lines.last == _lines.last)) return;
-    setState(() => _lines = lines.length > _maxLines ? lines.sublist(lines.length - _maxLines) : lines);
-    if (_follow && !_searching && _searchQuery.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
-      });
-    }
+    setState(() => _lines = lines);
   }
 
   Future<void> _copy() async {
@@ -249,41 +246,37 @@ class _LogPageState extends State<LogPage> {
                           ),
                         ),
                       )
-                    : SelectionArea(
-                        child: ListView.separated(
-                          controller: _scroll,
-                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-                          itemCount: filteredLines.length,
-                          separatorBuilder: (context, index) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                const charWidth = 7.2;
-                                final count = (constraints.maxWidth / charWidth).floor();
-                                return Text(
-                                  '-' * (count > 0 ? count : 50),
-                                  style: TextStyle(
-                                    fontFamily: 'monospace',
-                                    fontSize: 12,
-                                    height: 1.0,
-                                    color: scheme.outlineVariant.withValues(alpha: 0.9),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.clip,
-                                );
-                              },
+                    : ListView.separated(
+                        controller: _scroll,
+                        reverse: true,
+                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+                        itemCount: filteredLines.length,
+                        separatorBuilder: (context, index) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            '-' * 400,
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 12,
+                              height: 1.0,
+                              color: scheme.outlineVariant.withValues(alpha: 0.9),
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.clip,
                           ),
-                          itemBuilder: (context, i) => Text(
-                            filteredLines[i],
+                        ),
+                        itemBuilder: (context, i) {
+                          final line = filteredLines[filteredLines.length - 1 - i];
+                          return Text(
+                            line,
                             style: TextStyle(
                               fontFamily: 'monospace',
                               fontSize: 12,
                               height: 1.35,
-                              color: _colorFor(filteredLines[i], scheme),
+                              color: _colorFor(line, scheme),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
           ),
         ],

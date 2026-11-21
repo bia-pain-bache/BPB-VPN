@@ -29,6 +29,7 @@ The Remote DNS only accepts IPv4 and IPv6 now to boost up performance specially 
 - Refactored the core logic.
 - Fixed Tor and Psiphon routing bug in 1.2.2.
 - Fixed scanner pause bug.
+- Fixed log view lag.
 
 **Full Changelog**: https://github.com/bia-pain-bache/BPB-VPN/compare/v1.2.1...v1.3.0
 
