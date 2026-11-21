@@ -24,6 +24,7 @@ The Remote DNS only accepts IPv4 and IPv6 now to boost up performance specially 
 - Added Tor and Psiphon DNS servers as a fallback to Remote DNS.
 - Added theme to config view page.
 - Added config download button.
+- Updated Log view page UI and added search box to it.
 - Updated worker minification setup.
 - Refactored the core logic.
 - Fixed Tor and Psiphon routing bug in 1.2.2.
