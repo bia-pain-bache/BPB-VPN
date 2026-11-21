@@ -22,10 +22,12 @@ The Remote DNS only accepts IPv4 and IPv6 now to boost up performance specially 
 - Enabled Psiphon, Tor and Chain proxy (except WireGuard and Hysteria2) for SSH connection.
 - Made Remote DNS global, improved VLESS DNS performance and added Cloudflare DNS support to.
 - Added Tor and Psiphon DNS servers as a fallback to Remote DNS.
+- Added theme to config view page.
+- Added config download button.
 - Updated worker minification setup.
-- Fixed scanner pause bug.
 - Refactored the core logic.
 - Fixed Tor and Psiphon routing bug in 1.2.2.
+- Fixed scanner pause bug.
 
 **Full Changelog**: https://github.com/bia-pain-bache/BPB-VPN/compare/v1.2.1...v1.3.0
 
