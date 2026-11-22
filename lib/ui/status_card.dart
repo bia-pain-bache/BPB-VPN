@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../models/settings.dart';
-import '../services/my_ip.dart';
 import '../services/vpn_channel.dart';
 import '../state/app_state.dart';
 import 'format.dart';
@@ -154,16 +153,12 @@ class _Metrics extends StatelessWidget {
     final since = state.connectedAt;
     final ips = state.myIps;
 
-    Widget ip(IpInfo? info) {
+    Widget ip(String? info) {
       final text = !state.isConnected
           ? '—'
           : ips == null
           ? (state.loadingIps ? '…' : '—')
-          : info == null
-          ? 'Unavailable'
-          : info.country == null
-          ? info.ip
-          : '${countryFlag(info.country!)} ${info.ip}';
+          : info ?? 'Unavailable';
       return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
     }
 

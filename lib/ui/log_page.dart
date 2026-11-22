@@ -36,7 +36,7 @@ class _LogPageState extends State<LogPage> {
   List<String> _available = const ['xray'];
 
   /// Keep scrolling to new lines while the view is at the bottom.
-  bool _follow = true;
+  // bool _follow = true;
 
   /// Search visibility and query.
   bool _searching = false;
@@ -47,7 +47,7 @@ class _LogPageState extends State<LogPage> {
     super.initState();
     _scroll.addListener(() {
       if (!_scroll.hasClients) return;
-      _follow = _scroll.position.pixels <= 24;
+      // _follow = _scroll.position.pixels <= 24;
     });
     _load();
     _poll = Timer.periodic(const Duration(seconds: 1), (_) => _load());
@@ -107,7 +107,7 @@ class _LogPageState extends State<LogPage> {
     setState(() {
       _log = log;
       _lines = const [];
-      _follow = true;
+      // _follow = true;
       _searching = false;
       _searchQuery = '';
       _searchController.clear();
@@ -175,7 +175,7 @@ class _LogPageState extends State<LogPage> {
           ListTile(
             leading: const Icon(Symbols.tune_rounded),
             title: const Text('Log level'),
-            subtitle: Text(state.isConnected ? 'Reconnect after changes.' : 'Applies to the next connection.'),
+            subtitle: Text('Reconnect after changes.'),
             trailing: ChipMenu(
               values: _levels.keys.toList(),
               selected: level,

@@ -44,6 +44,12 @@ type ScannerBridge struct {
 	events <-chan scanner.Event
 }
 
+// My IP
+type MyIp struct {
+	IP          string `json:"ip"`
+	CountryCode string `json:"country_code"`
+}
+
 func NewScannerBridge() *ScannerBridge { return &ScannerBridge{} }
 
 func (b *ScannerBridge) StartScan(optionsJSON string) string {
@@ -418,4 +424,76 @@ func (c *Controller) MeasureDelay(url string) (int64, error) {
 		return -1, lastErr
 	}
 	return best, nil
+}
+
+// Fetch IP from different endpoints for CF and non-CF addresses
+func (c *Controller) GetMyIp(url string) (*MyIp, error) {
+	c.mu.Lock()
+	instance := c.instance
+	c.mu.Unlock()
+	if instance == nil {
+		return nil, errors.New("not running")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+	defer cancel()
+
+	transport := &http.Transport{
+		TLSHandshakeTimeout: 6 * time.Second,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dest, err := xnet.ParseDestination(network + ":" + addr)
+			if err != nil {
+				return nil, err
+			}
+			return core.Dial(ctx, instance, dest)
+		},
+	}
+	defer transport.CloseIdleConnections()
+	client := &http.Client{Transport: transport}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var lastErr error
+	for attempt := range 2 {
+		resp, err := client.Do(req)
+		if err != nil {
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			lastErr = err
+		} else {
+			if resp.StatusCode == http.StatusOK {
+				var myIp MyIp
+				err := json.NewDecoder(resp.Body).Decode(&myIp)
+				resp.Body.Close()
+				if err != nil {
+					return nil, err
+				}
+				// Return as a struct object for standard gomobile interop
+				return &myIp, nil
+			}
+
+			status := resp.Status
+			resp.Body.Close()
+			if resp.StatusCode < 500 {
+				return nil, fmt.Errorf("HTTP %s", status)
+			}
+			lastErr = fmt.Errorf("HTTP %s", status)
+		}
+		if attempt == 1 {
+			break
+		}
+
+		delay := 500 * time.Millisecond
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(delay):
+		}
+	}
+
+	return nil, fmt.Errorf("request failed after 2 attempts: %w", lastErr)
 }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:bpb/services/my_ip.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -41,16 +42,17 @@ class VpnChannel {
         .then((supported) => supported ?? false);
   }
 
-  static Stream<VpnStateEvent> get states => _events.receiveBroadcastStream().map((e) {
-    final map = Map<String, dynamic>.from(e as Map);
-    final at = (map['connectedAt'] as num?)?.toInt() ?? 0;
-    return VpnStateEvent(
-      VpnStatus.values.byName(map['state'] as String),
-      map['error'] as String?,
-      at > 0 ? DateTime.fromMillisecondsSinceEpoch(at) : null,
-      map['detail'] as String?,
-    );
-  });
+  static Stream<VpnStateEvent> get states =>
+      _events.receiveBroadcastStream().map((e) {
+        final map = Map<String, dynamic>.from(e as Map);
+        final at = (map['connectedAt'] as num?)?.toInt() ?? 0;
+        return VpnStateEvent(
+          VpnStatus.values.byName(map['state'] as String),
+          map['error'] as String?,
+          at > 0 ? DateTime.fromMillisecondsSinceEpoch(at) : null,
+          map['detail'] as String?,
+        );
+      });
 
   /// Asks for VPN permission if needed; true when granted.
   /// Asks for notification permission and, when [vpn], the VPN permission.
@@ -131,13 +133,25 @@ class VpnChannel {
   static Future<void> clearLog() => _methods.invokeMethod('clearLog');
 
   /// Saves [content] as [name] and opens the share sheet so the user picks an app.
-  static Future<void> shareFile({required String name, required String content, String title = 'Share'}) =>
-      _methods.invokeMethod('shareFile', {'name': name, 'content': content, 'title': title});
+  static Future<void> shareFile({
+    required String name,
+    required String content,
+    String title = 'Share',
+  }) => _methods.invokeMethod('shareFile', {
+    'name': name,
+    'content': content,
+    'title': title,
+  });
 
   /// Saves [content] as [name] in Downloads (Android 7-9: a Save-as screen). Returns where
   /// it was saved, or null if the user cancelled.
-  static Future<String?> saveFile({required String name, required String content}) =>
-      _methods.invokeMethod<String>('saveFile', {'name': name, 'content': content});
+  static Future<String?> saveFile({
+    required String name,
+    required String content,
+  }) => _methods.invokeMethod<String>('saveFile', {
+    'name': name,
+    'content': content,
+  });
 
   /// Opens the system file picker and returns the chosen file's name and text, or null if cancelled.
   static Future<({String name, String content})?> pickFile() async {
@@ -150,56 +164,77 @@ class VpnChannel {
 
   /// Starts the setup wizard's Tor with [bridges]; returns its HTTP proxy port (SetupTor.kt).
   static Future<int> startSetupTor(List<String> bridges) async =>
-      await _methods.invokeMethod<int>('startSetupTor', {'bridges': bridges}) ?? 0;
+      await _methods.invokeMethod<int>('startSetupTor', {'bridges': bridges}) ??
+      0;
 
   /// The setup wizard's Tor: bootstrap progress (0-100), whether it runs, and why it stopped.
-  static Future<({int progress, bool running, String? error})> setupTorStatus() async {
-    final m = await _methods.invokeMapMethod<String, dynamic>('setupTorStatus') ?? const {};
-    return (progress: (m['progress'] as int?) ?? 0, running: m['running'] == true, error: m['error'] as String?);
+  static Future<({int progress, bool running, String? error})>
+  setupTorStatus() async {
+    final m =
+        await _methods.invokeMapMethod<String, dynamic>('setupTorStatus') ??
+        const {};
+    return (
+      progress: (m['progress'] as int?) ?? 0,
+      running: m['running'] == true,
+      error: m['error'] as String?,
+    );
   }
 
   static Future<void> stopSetupTor() => _methods.invokeMethod('stopSetupTor');
 
   /// Starts the local ECH gateway (networking/), used when Cloudflare can't be reached directly.
-  static Future<void> startEchGateway() => _methods.invokeMethod('startEchGateway');
+  static Future<void> startEchGateway() =>
+      _methods.invokeMethod('startEchGateway');
 
   /// Opens [url] in the browser; false if nothing could handle it.
   static Future<bool> openUrl(String url) async {
     try {
-      return await _methods.invokeMethod<bool>('openUrl', {'url': url}) ?? false;
+      return await _methods.invokeMethod<bool>('openUrl', {'url': url}) ??
+          false;
     } on PlatformException {
       return false;
     }
   }
 
   /// Domain Fronting's CA files (bpb-cert.crt / .key) are in the app's storage.
-  static Future<bool> mitmCaExists() async => await _methods.invokeMethod<bool>('mitmCaExists') ?? false;
+  static Future<bool> mitmCaExists() async =>
+      await _methods.invokeMethod<bool>('mitmCaExists') ?? false;
 
-  static Future<void> saveMitmCa(MitmCa ca) => _methods.invokeMethod('saveMitmCa', {'cert': ca.cert, 'key': ca.key});
+  static Future<void> saveMitmCa(MitmCa ca) =>
+      _methods.invokeMethod('saveMitmCa', {'cert': ca.cert, 'key': ca.key});
 
   /// Opens Android's CA install; on Android 11+ after saving bpb-cert.crt to Downloads,
   /// whose path it returns.
-  static Future<String?> installMitmCa() => _methods.invokeMethod<String>('installMitmCa');
+  static Future<String?> installMitmCa() =>
+      _methods.invokeMethod<String>('installMitmCa');
 
   /// Replaces Xray's geo files (geoip.dat, geosite.dat) with [files], each checked against its
   /// SHA-256 (hex) first: none is replaced unless all match. Xray uses them from its next start.
-  static Future<void> saveGeoAssets(Map<String, ({Uint8List data, String sha256})> files) =>
-      _methods.invokeMethod('saveGeoAssets', {
-        'files': {
-          for (final e in files.entries) e.key: {'data': e.value.data, 'sha256': e.value.sha256},
-        },
-      });
+  static Future<void> saveGeoAssets(
+    Map<String, ({Uint8List data, String sha256})> files,
+  ) => _methods.invokeMethod('saveGeoAssets', {
+    'files': {
+      for (final e in files.entries)
+        e.key: {'data': e.value.data, 'sha256': e.value.sha256},
+    },
+  });
 
   /// The cores' versions, from their own reports: Xray (e.g. 26.10.21) and
   /// the Psiphon (its core's module version) and Tor ("Tor version …") binaries; empty if unknown.
   static Future<({String xray, String psiphon, String tor})> versions() async {
-    final m = await _methods.invokeMapMethod<String, String>('versions') ?? const {};
-    return (xray: m['xray'] ?? '', psiphon: m['psiphon'] ?? '', tor: m['tor'] ?? '');
+    final m =
+        await _methods.invokeMapMethod<String, String>('versions') ?? const {};
+    return (
+      xray: m['xray'] ?? '',
+      psiphon: m['psiphon'] ?? '',
+      tor: m['tor'] ?? '',
+    );
   }
 
   /// The installed app's version (from pubspec.yaml) and the phone's ABIs, preferred first.
   static Future<({String version, List<String> abis})> appInfo() async {
-    final m = await _methods.invokeMapMethod<String, dynamic>('appInfo') ?? const {};
+    final m =
+        await _methods.invokeMapMethod<String, dynamic>('appInfo') ?? const {};
     return (
       version: '${m['version'] ?? ''}',
       abis: (m['abis'] as List? ?? const []).map((e) => '$e').toList(),
@@ -212,9 +247,21 @@ class VpnChannel {
     return ms ?? -1;
   }
 
+  /// Get My IP through the running tunnel.
+  static Future<String?> getMyIp(String url) async {
+    final geo = await _methods.invokeMapMethod<String, String>('getMyIp', {
+      'url': url,
+    });
+    if (geo == null) return null;
+    final flag = countryFlag(geo['country_code'] as String);
+    final ip = geo['ip'] as String;
+    return '$flag $ip';
+  }
+
   /// Proxied traffic: bytes in the last second and since connecting, sampled by the
   /// VPN service (which also shows proxy and direct rates in its notification).
-  static Future<({int up, int down, int totalUp, int totalDown})> traffic() async {
+  static Future<({int up, int down, int totalUp, int totalDown})>
+  traffic() async {
     final m = await _methods.invokeMapMethod<String, int>('trafficStats');
     return (
       up: m?['proxyUp'] ?? 0,
@@ -225,7 +272,8 @@ class VpnChannel {
   }
 
   static Future<List<InstalledApp>> installedApps() async {
-    final list = await _methods.invokeListMethod<Map>('installedApps') ?? const [];
+    final list =
+        await _methods.invokeListMethod<Map>('installedApps') ?? const [];
     return list
         .map(
           (m) => InstalledApp(

@@ -222,6 +222,14 @@ class MainActivity : FlutterActivity() {
                     CoreManager.controller.measureDelay(url)
                 }
             }
+            "getMyIp" -> {
+                val url = call.argument<String>("url")
+                runInBackground(result) {
+                    if (!CoreManager.controller.isRunning) throw IllegalStateException("Not connected")
+                    val myIp = CoreManager.controller.getMyIp(url)
+                    mapOf("ip" to myIp.ip, "country_code" to myIp.countryCode)
+                }
+            }
             "scannerStart" -> {
                 val config = call.argument<String>("config")
                 if (config.isNullOrEmpty()) {

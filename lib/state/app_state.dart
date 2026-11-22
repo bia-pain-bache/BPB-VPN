@@ -811,7 +811,7 @@ class AppState extends ChangeNotifier {
     loadingIps = true;
     notifyListeners();
     try {
-      myIps = await fetchMyIps(proxyPort: LocalProxy.port);
+      myIps = await fetchMyIps();
     } finally {
       loadingIps = false;
       if (!isConnected) myIps = null;
