@@ -701,10 +701,15 @@ class SshSettings {
   final int tcpKeepAliveInterval;
   final int keepAliveInterval;
 
+  /// The server's key (SHA256:…), remembered after the first successful connection and sent back
+  /// on the next ones so only that server is trusted. Never shown or edited in the UI.
+  final String hostKey;
+
   const SshSettings({
     this.host = '', this.port = 22, this.user = '', this.password = '',
     this.privateKey = '', this.passphrase = '',
     this.tcpKeepAliveInterval = 15, this.keepAliveInterval = 15,
+    this.hostKey = '',
   });
 
   static SshSettings parse(Object? value) {
@@ -720,6 +725,7 @@ class SshSettings {
         d.tcpKeepAliveInterval,
       ),
       keepAliveInterval: _int(j['keepAliveInterval'], d.keepAliveInterval),
+      hostKey: _str(j['hostKey'], d.hostKey),
     );
   }
 
@@ -728,6 +734,7 @@ class SshSettings {
     'privateKey': privateKey, 'passphrase': passphrase,
     'tcpKeepAliveInterval': tcpKeepAliveInterval,
     'keepAliveInterval': keepAliveInterval,
+    'hostKey': hostKey,
   };
 
   bool get isConfigured => host.trim().isNotEmpty && user.trim().isNotEmpty &&

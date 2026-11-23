@@ -345,6 +345,14 @@ func (c *Controller) Stop() error {
 	return err
 }
 
+// SSHHostKey is the running SSH exit's server key (SHA256:…), pinned or learned on its first
+// connection, for the app to remember; "" when there is no SSH exit or no key yet.
+func (c *Controller) SSHHostKey() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.sshServer.HostKey()
+}
+
 // OutboundTraffic reads and resets the outbound traffic counters (the config's policy turns
 // them on): "tag,uplink|downlink,bytes;" for each counter above 0.
 func (c *Controller) OutboundTraffic() string {

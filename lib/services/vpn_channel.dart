@@ -258,6 +258,10 @@ class VpnChannel {
     return '$flag $ip';
   }
 
+  /// The SSH exit's server key (SHA256:…), pinned or learned on its first connection; "" if none.
+  static Future<String> sshHostKey() async =>
+      await _methods.invokeMethod<String>('sshHostKey') ?? '';
+
   /// Proxied traffic: bytes in the last second and since connecting, sampled by the
   /// VPN service (which also shows proxy and direct rates in its notification).
   static Future<({int up, int down, int totalUp, int totalDown})>

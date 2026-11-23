@@ -230,6 +230,10 @@ class MainActivity : FlutterActivity() {
                     mapOf("ip" to myIp.ip, "country_code" to myIp.countryCode)
                 }
             }
+            "sshHostKey" -> runInBackground(result) {
+                // The SSH exit's server key, for the app to remember ("" when there is none).
+                CoreManager.controller.sshHostKey()
+            }
             "scannerStart" -> {
                 val config = call.argument<String>("config")
                 if (config.isNullOrEmpty()) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../models/settings.dart';
 import '../state/app_state.dart';
@@ -25,6 +26,8 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
   late final TextEditingController _keepAlive;
   late final TextEditingController _tcpKeepAlive;
   bool _dirty = false;
+  bool _showPassword = false;
+  bool _showPassphrase = false;
 
   @override
   void initState() {
@@ -58,6 +61,11 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
   void _save() {
     if (!_formKey.currentState!.validate()) return;
     final state = AppScope.read(context);
+    // The remembered server key belongs to the old host and port.
+    if (_host.text.trim() != _initial.host ||
+        _port.text != '${_initial.port}') {
+      state.write('ssh.hostKey', null);
+    }
     state.write('ssh.host', _host.text.trim());
     state.write('ssh.port', int.parse(_port.text));
     state.write('ssh.user', _user.text.trim());
@@ -181,29 +189,45 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
                       ),
                       TextFormField(
                         controller: _password,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Password',
-                          helperText:
-                              'Use a password, a private key, or both.',
+                          helperText: 'Use a password, a private key, or both.',
+                          suffixIcon: _visibilityButton(
+                            _showPassword,
+                            () =>
+                                setState(() => _showPassword = !_showPassword),
+                          ),
                         ),
-                        obscureText: true,
+                        obscureText: !_showPassword,
+                        validator: (value) =>
+                            (value ?? '').isEmpty && _key.text.trim().isEmpty
+                            ? 'Enter a password or a private key'
+                            : null,
                       ),
                       TextFormField(
                         controller: _key,
                         decoration: const InputDecoration(
                           labelText: 'Private key',
+                          helperText: 'Paste the whole key, with its BEGIN and END lines.',
                           alignLabelWithHint: true,
                         ),
                         minLines: 4,
                         maxLines: 8,
                         autocorrect: false,
+                        validator: _keyProblem,
                       ),
                       TextFormField(
                         controller: _passphrase,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Key passphrase',
+                          suffixIcon: _visibilityButton(
+                            _showPassphrase,
+                            () => setState(
+                              () => _showPassphrase = !_showPassphrase,
+                            ),
+                          ),
                         ),
-                        obscureText: true,
+                        obscureText: !_showPassphrase,
                       ),
                       TextFormField(
                         controller: _keepAlive,
@@ -237,6 +261,31 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
 
   String? _required(String? value) =>
       value == null || value.trim().isEmpty ? 'Required' : null;
+
+  /// The eye button of a hidden field.
+  Widget _visibilityButton(bool shown, VoidCallback toggle) => IconButton(
+    tooltip: shown ? 'Hide' : 'Show',
+    onPressed: toggle,
+    icon: Icon(
+      shown ? Symbols.visibility_off_rounded : Symbols.visibility_rounded,
+    ),
+  );
+
+  /// Catches the usual paste mistakes before connecting.
+  String? _keyProblem(String? value) {
+    final key = (value ?? '').trim();
+    if (key.isEmpty) return null;
+    if (key.startsWith('ssh-') || key.startsWith('ecdsa-')) {
+      return 'That is a public key. Paste the private key.';
+    }
+    if (key.contains('PuTTY-User-Key-File')) {
+      return "PuTTY (.ppk) keys aren't supported. Export it as an OpenSSH key.";
+    }
+    if (!key.contains('-----BEGIN') || !key.contains('-----END')) {
+      return 'Paste the whole key, with its BEGIN and END lines.';
+    }
+    return null;
+  }
 
   String? _number(String? value, int min, int max) {
     final number = int.tryParse(value ?? '');

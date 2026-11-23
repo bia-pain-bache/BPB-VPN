@@ -34,6 +34,9 @@ class AppState extends ChangeNotifier {
   static const _kDevice = 'device';
   static const _kSecretAccounts = 'cloudflareAccounts';
 
+  /// In the core's error when the SSH server presents a different key than the remembered one.
+  static const _sshKeyChanged = 'host key changed';
+
   late SharedPreferences _prefs;
   final _secrets = const FlutterSecureStorage();
 
@@ -529,11 +532,18 @@ class AppState extends ChangeNotifier {
     error = event.error;
     connectedAt = event.connectedAt;
     exitDetail = event.detail;
+    if (error != null && error!.contains(_sshKeyChanged) && profile.ssh.hostKey.isNotEmpty) {
+      // The server presented another key (rebuilt or replaced): forget the old one, so the next
+      // connection trusts the new key.
+      _storeSshHostKey(null);
+      error = "The SSH server's key changed. Connect again to trust the new key.";
+    }
     if (status == VpnStatus.connected) {
       _startTrafficTimer();
       if (!wasConnected && !sameSession) {
         needsReconnect = false;
         totalUp = totalDown = 0;
+        if (mode == ConnectionMode.ssh) unawaited(_rememberSshHostKey());
         unawaited(refreshMyIps());
         unawaited(refreshUsage());
         _redeployDue(); // The API may only be reachable through the tunnel.
@@ -548,6 +558,26 @@ class AppState extends ChangeNotifier {
       }
     }
     notifyListeners();
+  }
+
+  /// Stores the SSH server's key, or forgets it with null. Not a setting the user changed, so it
+  /// doesn't flag "reconnect needed" like [write] does.
+  void _storeSshHostKey(String? key) {
+    _stored = _stored.updated('ssh.hostKey', key);
+    _profile = null;
+    _prefs.setString(_kProfile, jsonEncode(_stored.toSparseJson()));
+  }
+
+  /// After connecting through SSH: remembers the server's key if none is remembered yet, so later
+  /// connections only trust that server. The user never sees or edits it.
+  Future<void> _rememberSshHostKey() async {
+    if (profile.ssh.hostKey.isNotEmpty) return;
+    try {
+      final key = await VpnChannel.sshHostKey();
+      if (key.isNotEmpty && profile.ssh.hostKey.isEmpty) _storeSshHostKey(key);
+    } catch (_) {
+      // The core is stopping; the next connection remembers it.
+    }
   }
 
   void _startTrafficTimer() {

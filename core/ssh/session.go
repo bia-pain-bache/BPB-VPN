@@ -117,9 +117,23 @@ func parseKey(key, passphrase string) (ssh.Signer, error) {
 	case errors.Is(err, x509.IncorrectPasswordError) || err != nil && strings.Contains(err.Error(), "decryption password incorrect"):
 		return nil, errors.New("wrong passphrase for the private key")
 	case err != nil:
-		return nil, fmt.Errorf("private key: %v", err)
+		return nil, privateKeyError(key, err)
 	}
 	return signer, nil
+}
+
+func privateKeyError(key string, err error) error {
+	log.Printf("SSH private key: %v", err)
+	k := strings.TrimSpace(key)
+	switch {
+	case strings.Contains(k, "PuTTY-User-Key-File"):
+		return errors.New("PuTTY (.ppk) keys aren't supported: in PuTTYgen, export it as an OpenSSH key")
+	case strings.HasPrefix(k, "ssh-") || strings.HasPrefix(k, "ecdsa-"):
+		return errors.New("that is a public key: paste the private key")
+	case strings.Contains(err.Error(), "no key found"):
+		return errors.New("the private key isn't valid: paste the whole key, with its BEGIN and END lines")
+	}
+	return errors.New("the private key can't be read: check that it is complete and unchanged")
 }
 
 // checkHostKey accepts the pinned key, or any key when none is pinned (reporting it so the
@@ -137,9 +151,17 @@ func (s *session) checkHostKey(_ string, _ net.Addr, key ssh.PublicKey) error {
 		return nil
 	}
 	if got != pinned {
-		return errAuth{fmt.Errorf("the server's host key changed: expected %s, got %s", pinned, got)}
+		log.Printf("SSH host key changed: expected %s, got %s", pinned, got)
+		return errAuth{errors.New("the server's host key changed")}
 	}
 	return nil
+}
+
+// hostKey is the pinned key, or the one learned on the first connection ("" before that).
+func (s *session) hostKey() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.cfg.HostKey
 }
 
 // dialContext dials addr through d, honoring ctx where d supports it (net.Dialer and the
@@ -171,9 +193,14 @@ func (s *session) connectContext(ctx context.Context) (*ssh.Client, error) {
 	stop()
 	if err != nil {
 		conn.Close()
-		var hostKey errAuth
-		if errors.As(err, &hostKey) || strings.Contains(err.Error(), "unable to authenticate") {
-			return nil, errAuth{err}
+		var plain errAuth
+		switch {
+		case errors.As(err, &plain): // the host key callback's
+			log.Printf("SSH handshake with %s: %v", s.cfg.Server, err)
+			return nil, plain
+		case strings.Contains(err.Error(), "unable to authenticate"):
+			log.Printf("SSH login to %s: %v", s.cfg.Server, err)
+			return nil, errAuth{errors.New("wrong username, password or key")}
 		}
 		return nil, err
 	}
