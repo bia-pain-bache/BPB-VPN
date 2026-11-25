@@ -193,7 +193,7 @@ const domainFrontingV23 = r'''
         "security": "tls",
         "tlsSettings": {
           "serverName": "www.google.com",
-          "verifyPeerCertByName": "fromMitM",
+          "verifyPeerCertByName": "fromMitM,www.google.com",
           "alpn": [
             "fromMitM"
           ],
@@ -220,7 +220,7 @@ const domainFrontingV23 = r'''
         "security": "tls",
         "tlsSettings": {
           "serverName": "github.githubassets.com",
-          "verifyPeerCertByName": "fromMitM",
+          "verifyPeerCertByName": "fromMitM,github.githubassets.com",
           "alpn": [
             "fromMitM"
           ],
@@ -244,7 +244,7 @@ const domainFrontingV23 = r'''
         "security": "tls",
         "tlsSettings": {
           "serverName": "www.microsoft.com",
-          "verifyPeerCertByName": "fromMitM",
+          "verifyPeerCertByName": "fromMitM,www.microsoft.com",
           "alpn": [
             "fromMitM"
           ],
