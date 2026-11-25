@@ -1,13 +1,17 @@
-# Builds and publishes split and universal APKs when a matching version tag is pushed:
-#   git tag v1.0.0 && git push origin v1.0.0
+# Builds and publishes split and universal APKs. Run it manually from the Actions tab.
+# The release tag is v<version> from pubspec.yaml (version: 1.2.3 gives tag v1.2.3).
 #
-# The tag must match pubspec.yaml. Add KEYSTORE_BASE64, KEYSTORE_PASSWORD,
-# KEY_ALIAS, and KEY_PASSWORD under GitHub Settings → Secrets and variables → Actions.
+# Add KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD under
+# GitHub Settings → Secrets and variables → Actions.
 name: Release
 
 on:
-  push:
-    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: Mark the release as a pre-release
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -18,15 +22,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check the tag against pubspec.yaml
+      - name: Read version from pubspec.yaml
         run: |
-          tag="${GITHUB_REF_NAME#v}"
-          version=$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)
-          if [ "$tag" != "$version" ]; then
-            echo "::error::Tag v$tag doesn't match pubspec.yaml's version $version"
+          version=$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml | tr -d '[:space:]')
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Could not read a x.y.z version from pubspec.yaml (got '$version')"
             exit 1
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "Releasing v$version"
 
       - uses: actions/setup-java@v4
         with:
@@ -52,7 +56,7 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Psiphon exit (built from source with the NDK)
+      - name: Psiphon tunnel core (built from source with the NDK)
         env:
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
         run: bash scripts/build_psiphon.sh
@@ -137,8 +141,10 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.VERSION }}
           name: BPB ${{ env.VERSION }}
           body_path: RELEASE_NOTES.md
+          prerelease: ${{ inputs.prerelease }}
           files: |
             dist/*.apk
             dist/SHA256SUMS

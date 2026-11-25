@@ -10,16 +10,16 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VERSION=16.0.2
+VERSION=16.0.3
 BASE="https://dist.torproject.org/torbrowser/$VERSION"
 JNI=../android/app/src/main/jniLibs
 ASSETS=../android/app/src/main/assets
 
 declare -A ABI=([aarch64]=arm64-v8a [armv7]=armeabi-v7a [x86_64]=x86_64)
 declare -A SHA=(
-  [aarch64]=5fc4967b88bbf81546386bbdecbe86a70982ff7810cef8a155040f8aedd1905f
-  [armv7]=db2b893bc5d2d09af25690cf267f07ca1e0178b39a4e9a47be0c1d577288992d
-  [x86_64]=2a3e89f991dc753306984dfadcd79e4017eb162e2a376b7ff42653c4b0c61286
+  [aarch64]=9d052898c39e8aeaa2035df4db205ef7f6afadfd26e606ca42107d1f1f08f5a5
+  [armv7]=07146c3c874e609591832465979d2347e4b9b80542ef720af99241e5acd74783
+  [x86_64]=4a0725397295facb1dca506a89b6c6583a2246300134764850ffd9c1e06e31c1
 )
 
 TMP=$(mktemp -d)
