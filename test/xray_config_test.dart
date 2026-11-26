@@ -1305,6 +1305,7 @@ void main() {
         ),
         {
           'LimitTunnelProtocols': ['FRONTED-MEEK-OSSH'],
+          'DisableTactics': true,
         },
       );
       expect(

@@ -361,6 +361,7 @@ class XrayConfigBuilder {
           exitFor(mode, device, const []) == ExitNode.psiphon
       ? const {
           'LimitTunnelProtocols': ['FRONTED-MEEK-OSSH'],
+          'DisableTactics': true,
         }
       : null;
 

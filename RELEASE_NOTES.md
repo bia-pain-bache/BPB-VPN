@@ -11,6 +11,7 @@
 - Refined My IP, Added ISP to connection metrics.
 - Enabled My IP while not connected (local ISP).
 - Changed LAN IP to **Share proxy** on homepage.
+- Fixed **Domain Fronting + Psiphon** bug; much faster connection now.
 
 **Full Changelog**: https://github.com/bia-pain-bache/BPB-VPN/compare/v1.3.0...v1.3.1
 
