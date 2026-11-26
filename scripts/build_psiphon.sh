@@ -13,7 +13,7 @@ BIN="$NDK/toolchains/llvm/prebuilt/$HOST/bin"
 API=24
 # Psiphon's TLS fork only works with the Go version it targets; go.mod's toolchain line
 # alone doesn't downgrade a newer local Go, so force it.
-export GOTOOLCHAIN=go1.26.9
+export GOTOOLCHAIN=go1.26.10
 OUT=../android/app/src/main/jniLibs
 EXT=""; [[ "$HOST" == windows* ]] && EXT=".cmd"
 

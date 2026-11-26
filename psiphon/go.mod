@@ -2,9 +2,9 @@ module bpb/psiphon
 
 go 1.26.0
 
-toolchain go1.26.9
+toolchain go1.26.10
 
-require github.com/Psiphon-Labs/psiphon-tunnel-core v1.0.11-0.20261005170209-c4a09096ab40
+require github.com/Psiphon-Labs/psiphon-tunnel-core v1.0.11-0.20261117173809-66e249dde58a
 
 require (
 	filippo.io/bigmod v0.0.1 // indirect
@@ -12,16 +12,16 @@ require (
 	filippo.io/keygen v0.0.0-20230306160926-5201437acf8e // indirect
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Jigsaw-Code/outline-sdk v0.0.16 // indirect
-	github.com/Psiphon-Labs/bolt v0.0.0-20260921192800-17f196515990 // indirect
+	github.com/Psiphon-Labs/bolt v0.0.0-20261020160549-5e39149d57c2 // indirect
 	github.com/Psiphon-Labs/consistent v0.0.0-20240322131436-20aaa4e05737 // indirect
 	github.com/Psiphon-Labs/covert-dtls v0.0.0-20260423180104-2d3b15cbc8be // indirect
 	github.com/Psiphon-Labs/goptlib v0.0.0-20200406165125-c0e32a7a3464 // indirect
-	github.com/Psiphon-Labs/pion-ice/v4 v4.0.0-20260423180031-37d6e92d021f // indirect
-	github.com/Psiphon-Labs/pion-webrtc/v4 v4.0.0-20260423180049-7ff453f9681a // indirect
-	github.com/Psiphon-Labs/psiphon-tls v0.0.0-20260612202619-4944f00a8304 // indirect
-	github.com/Psiphon-Labs/quic-go v0.0.0-20250527153145-79fe45fb83b1 // indirect
+	github.com/Psiphon-Labs/pion-ice/v4 v4.0.0-20261026204224-ea8b9a9ff059 // indirect
+	github.com/Psiphon-Labs/pion-webrtc/v4 v4.0.0-20261026144143-b3b8f4477c88 // indirect
+	github.com/Psiphon-Labs/psiphon-tls v0.0.0-20261019151451-3e697502354d // indirect
+	github.com/Psiphon-Labs/quic-go v0.0.0-20261103172121-ba3c8406711b // indirect
 	github.com/Psiphon-Labs/utls v1.1.1-0.20260729134728-7a1fc711853d // indirect
-	github.com/andybalholm/brotli v1.1.1 // indirect
+	github.com/andybalholm/brotli v1.2.7 // indirect
 	github.com/armon/go-proxyproto v0.0.0-20180202201750-5b7edb60ff5f // indirect
 	github.com/axiomhq/hyperloglog v0.2.6 // indirect
 	github.com/bifurcation/mint v0.0.0-20180306135233-198357931e61 // indirect
@@ -46,7 +46,7 @@ require (
 	github.com/grafov/m3u8 v0.0.0-20171211212457-6ab8f28ed427 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/kamstrup/intmap v0.5.2 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/libp2p/go-reuseport v0.4.0 // indirect
 	github.com/marusama/semaphore v0.0.0-20171214154724-565ffd8e868a // indirect
