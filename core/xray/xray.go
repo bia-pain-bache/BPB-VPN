@@ -48,6 +48,7 @@ type ScannerBridge struct {
 type MyIp struct {
 	IP          string `json:"ip"`
 	CountryCode string `json:"country_code"`
+	ISP         string `json:"organization_name,omitempty"`
 }
 
 func NewScannerBridge() *ScannerBridge { return &ScannerBridge{} }
