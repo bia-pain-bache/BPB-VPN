@@ -55,7 +55,11 @@ void main() {
       ),
       findsOneWidget,
     );
-    await tester.tap(find.byType(InkWell));
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) => widget is Semantics && widget.properties.label == 'Disconnect',
+      ),
+    );
     await tester.pump();
     expect(calls, ['stop']);
     await tester.pumpWidget(const SizedBox.shrink());
@@ -74,7 +78,14 @@ void main() {
           .descendant(of: find.byType(Card), matching: find.byType(Stack))
           .first,
     );
-    final ink = tester.getRect(find.byType(InkWell));
+    final ink = tester.getRect(
+      find.descendant(
+        of: find.byWidgetPredicate(
+          (widget) => widget is Semantics && (widget.properties.label == 'Connect' || widget.properties.label == 'Disconnect'),
+        ),
+        matching: find.byType(InkWell),
+      ),
+    );
     expect(ink.top - card.top, 24);
     expect(card.right - ink.right, 24);
   });

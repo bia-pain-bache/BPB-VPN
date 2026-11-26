@@ -360,10 +360,10 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     _redeployDue();
     unawaited(refreshUsage());
-    unawaited(refreshLanIp());
+    unawaited(refreshLocalIps());
     _lanTimer = Timer.periodic(
       const Duration(seconds: 5),
-      (_) => refreshLanIp(),
+      (_) => refreshLocalIps(),
     );
   }
 
@@ -553,8 +553,8 @@ class AppState extends ChangeNotifier {
       upSpeed = downSpeed = 0;
       if (status == VpnStatus.disconnected) {
         pingMs = null;
-        myIps = null;
         needsReconnect = false;
+        unawaited(refreshMyIps()); // Fetch local ISP IP when disconnected
       }
     }
     notifyListeners();
@@ -835,26 +835,27 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Looks up the exit IPs through the tunnel (panel's "My IP").
+  /// Looks up the exit IPs (tunnel when connected, local ISP when disconnected).
   Future<void> refreshMyIps() async {
-    if (!isConnected || loadingIps) return;
+    if (loadingIps) return;
     loadingIps = true;
     notifyListeners();
     try {
-      myIps = await fetchMyIps();
+      myIps = await fetchMyIps(connected: isConnected);
     } finally {
       loadingIps = false;
-      if (!isConnected) myIps = null;
       notifyListeners();
     }
   }
 
-  /// The LAN address can change (Wi-Fi switch, hotspot on/off), so it's re-checked often.
-  Future<void> refreshLanIp() async {
+  /// The LAN and local ISP address can change (Wi-Fi switch, hotspot on/off), so it's re-checked often.
+  Future<void> refreshLocalIps() async {
     final ip = await lanIPv4();
-    if (ip == lanIp) return;
-    lanIp = ip;
-    notifyListeners();
+    if (ip != lanIp) {
+      lanIp = ip;
+      notifyListeners();
+      if (!isConnected) unawaited(refreshMyIps()); // Refresh local IP on network change
+    }
   }
 
   // endregion

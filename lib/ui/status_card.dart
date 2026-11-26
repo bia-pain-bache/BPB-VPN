@@ -174,17 +174,16 @@ class _Metrics extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final ips = state.myIps;
+    final connected = state.isConnected;
 
     Widget ip(String? info) {
-      final text = !state.isConnected
-          ? '—'
-          : ips == null
+      final text = ips == null
           ? (state.loadingIps ? '…' : '—')
-          : info ?? 'Unavailable';
+          : info ?? (state.loadingIps ? '…' : 'Unavailable');
       return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
     }
 
-    final refreshIps = state.isConnected ? state.refreshMyIps : null;
+    final refreshIps = state.refreshMyIps;
     final twoIps = state.mode.needsWorker && state.exitNode == ExitNode.worker;
     // This phone's LAN address (always shown); with LAN connections allowed, other
     // devices use it with port 10808 for the SOCKS/HTTP proxy.
@@ -198,34 +197,39 @@ class _Metrics extends StatelessWidget {
       onTap: lanIp == null
           ? null
           : () {
-              Clipboard.setData(ClipboardData(text: lanIp));
+              Clipboard.setData(ClipboardData(text: proxy));
               ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text('Copied $lanIp')));
+                  .showSnackBar(SnackBar(content: Text('Copied $proxy')));
             },
     );
+
+    // When disconnected, show local ISP IP/ISP.
+    final showLocal = !connected && ips?.hasLocal == true;
+    final localIp = ips?.local?.ip;
+    final localIsp = ips?.local?.isp;
 
     final metrics = <Widget>[
       _Metric(
         icon: Symbols.speed_rounded,
         label: 'Ping',
-        value: state.isConnected ? const _PingButton() : const Text('—'),
+        value: connected ? const _PingButton() : const Text('—'),
       ),
       // Through the worker alone, Cloudflare-hosted sites see the proxy IP and others the
       // worker's exit IP. WARP, Serverless and the chain / Psiphon exits have a single exit IP.
       _Metric(
         icon: Symbols.location_on_rounded,
         label: 'My IP',
-        value: ip(ips?.other?.ip ?? (twoIps ? null : ips?.cloudflare?.ip)),
+        value: ip(showLocal ? localIp : (ips?.other?.ip ?? (twoIps ? null : ips?.cloudflare?.ip))),
         onTap: refreshIps,
       ),
       _Metric(
         icon: Symbols.target,
         label: 'ISP',
-        value: ip(ips?.other?.isp),
+        value: ip(showLocal ? localIsp : ips?.other?.isp),
         onTap: refreshIps,
       ),
     ];
-    if (twoIps) {
+    if (twoIps && connected) {
       metrics.add(
         _Metric(
           icon: Symbols.location_on_rounded,
@@ -268,32 +272,41 @@ class _Metric extends StatelessWidget {
     final theme = Theme.of(context);
     final content = Row(
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: theme.textTheme.titleMedium?.copyWith(
+        Expanded(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 18,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
-            ),
-          ],
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: DefaultTextStyle.merge(
-            style: theme.textTheme.titleMedium,
-            child: SizedBox(
-              height: 28,
-              child: Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: value,
+          child: Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: DefaultTextStyle.merge(
+              style: theme.textTheme.titleMedium,
+              child: SizedBox(
+                height: 28,
+                child: Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: value,
+                ),
               ),
             ),
           ),

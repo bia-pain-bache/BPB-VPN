@@ -126,7 +126,7 @@ class _ReconnectBanner extends StatelessWidget {
   }
 }
 
-const _tabular = TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
+// const _tabular = TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
 
 /// Download and Upload cards (rate on top, session total below).
 /// Always laid out so the connect button doesn't jump when the VPN connects.
@@ -336,7 +336,7 @@ class _UsageCard extends StatelessWidget {
     final state = AppScope.of(context);
     final theme = Theme.of(context);
     final usage = state.usage;
-    final style = theme.textTheme.bodyMedium?.merge(_tabular);
+    final style = theme.textTheme.bodyMedium;
     return _InfoCard(
       icon: Symbols.data_usage_rounded,
       title: 'Requests · last 24h',
@@ -383,7 +383,7 @@ class _AccountUsage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final ratio = total / limit;
-    final style = theme.textTheme.bodyMedium?.merge(_tabular);
+    final style = theme.textTheme.bodyMedium;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
