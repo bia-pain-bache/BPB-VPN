@@ -203,18 +203,16 @@ class _TrafficCard extends StatelessWidget {
                 Icon(icon, size: 18, weight: 600, color: muted),
                 Text(
                   '${formatBytes(rate)}/s',
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w600)
-                      .merge(_tabular),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
             Text(
               'Total ${formatBytes(total)}',
               // textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: muted)
-                  .merge(_tabular),
+              style: theme.textTheme.bodyMedium?.copyWith(color: muted),
             ),
           ],
         ),
@@ -262,7 +260,9 @@ class _InfoCard extends StatelessWidget {
               children: [
                 Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
                 const SizedBox(width: 8),
-                Expanded(child: Text(title, style: theme.textTheme.titleMedium)),
+                Expanded(
+                  child: Text(title, style: theme.textTheme.titleMedium),
+                ),
                 IconButton(
                   tooltip: 'Refresh',
                   padding: EdgeInsets.zero,

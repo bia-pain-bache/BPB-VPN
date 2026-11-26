@@ -12,7 +12,7 @@ import 'theme.dart';
 
 /// Connected colour; stays green whatever theme colour is picked.
 const _green = Color(0xFF1FA463);
-const _tabular = TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
+// const _tabular = TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
 
 // Layout constants: the power button is positioned from these.
 const _pad = 24.0;
@@ -120,6 +120,29 @@ class _StatusCardState extends State<StatusCard> {
                                 color: muted,
                               ),
                             ),
+                            if (state.isConnected &&
+                                state.connectedAt != null) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Symbols.timer_rounded,
+                                    size: 16,
+                                    color: muted,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    formatDuration(
+                                      DateTime.now().difference(
+                                        state.connectedAt!,
+                                      ),
+                                    ),
+                                    style: theme.textTheme.titleMedium,
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -145,12 +168,11 @@ class _StatusCardState extends State<StatusCard> {
   }
 }
 
-/// Duration, ping and the two exit IPs in a 2×2 grid.
+/// Duration, ping and the exit IPs in a vertical list.
 class _Metrics extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final since = state.connectedAt;
     final ips = state.myIps;
 
     Widget ip(String? info) {
@@ -167,10 +189,11 @@ class _Metrics extends StatelessWidget {
     // This phone's LAN address (always shown); with LAN connections allowed, other
     // devices use it with port 10808 for the SOCKS/HTTP proxy.
     final lanIp = state.lanIp;
+    final proxy = lanIp != null && state.device.lanSharing ? '$lanIp:10808' : 'Disabled';
     final lan = _Metric(
       icon: Symbols.network_node_rounded,
-      label: 'LAN IP',
-      value: Text(lanIp ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
+      label: 'Share proxy',
+      value: Text(lanIp != null ? proxy : '—', maxLines: 1, overflow: TextOverflow.ellipsis),
       tooltip: 'Tap to copy',
       onTap: lanIp == null
           ? null
@@ -180,69 +203,38 @@ class _Metrics extends StatelessWidget {
                   .showSnackBar(SnackBar(content: Text('Copied $lanIp')));
             },
     );
+
+    final metrics = <Widget>[
+      _Metric(
+        icon: Symbols.speed_rounded,
+        label: 'Ping',
+        value: state.isConnected ? const _PingButton() : const Text('—'),
+      ),
+      // Through the worker alone, Cloudflare-hosted sites see the proxy IP and others the
+      // worker's exit IP. WARP, Serverless and the chain / Psiphon exits have a single exit IP.
+      _Metric(
+        icon: Symbols.location_on_rounded,
+        label: 'My IP',
+        value: ip(ips?.other ?? (twoIps ? null : ips?.cloudflare)),
+        onTap: refreshIps,
+      ),
+    ];
+    if (twoIps) {
+      metrics.add(
+        _Metric(
+          icon: Symbols.location_on_rounded,
+          label: 'My IP Cloudflare',
+          value: ip(ips?.cloudflare),
+          onTap: refreshIps,
+        ),
+      );
+    }
+    metrics.add(lan);
+
     return Column(
+      spacing: 10,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _Metric(
-                icon: Symbols.timer_rounded,
-                label: 'Duration',
-                value: Text(
-                  state.isConnected && since != null
-                      ? formatDuration(DateTime.now().difference(since))
-                      : '—',
-                ),
-              ),
-            ),
-            Expanded(
-              child: _Metric(
-                icon: Symbols.speed_rounded,
-                label: 'Ping',
-                value: state.isConnected
-                    ? const _PingButton()
-                    : const Text('—'),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        // Through the worker alone, Cloudflare-hosted sites see the proxy IP and others the
-        // worker's exit IP. WARP, Serverless and the chain / Psiphon exits have a single exit IP.
-        Row(
-          children: twoIps
-              ? [
-                  Expanded(
-                    child: _Metric(
-                      icon: Symbols.location_on_rounded,
-                      label: 'My IP',
-                      value: ip(ips?.other),
-                      onTap: refreshIps,
-                    ),
-                  ),
-                  Expanded(
-                    child: _Metric(
-                      icon: Symbols.location_on_rounded,
-                      label: 'My IP Cloudflare',
-                      value: ip(ips?.cloudflare),
-                      onTap: refreshIps,
-                    ),
-                  ),
-                ]
-              : [
-                  Expanded(
-                    child: _Metric(
-                      icon: Symbols.location_on_rounded,
-                      label: 'My IP',
-                      value: ip(ips?.other ?? ips?.cloudflare),
-                      onTap: refreshIps,
-                    ),
-                  ),
-                  Expanded(child: lan),
-                ],
-        ),
-        // Both target IPs fill the row, so the LAN IP gets its own.
-        if (twoIps) ...[const SizedBox(height: 14), lan],
+        for (var i = 0; i < metrics.length; i++) ...[metrics[i]],
       ],
     );
   }
@@ -268,54 +260,51 @@ class _Metric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final content = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final content = Row(
       children: [
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
-              size: 16,
+              size: 18,
               color: theme.colorScheme.onSurfaceVariant,
-              weight: 500,
             ),
             const SizedBox(width: 6),
             Text(
               label,
-              style: theme.textTheme.titleSmall?.copyWith(
+              style: theme.textTheme.titleMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 2),
-        DefaultTextStyle.merge(
-          style: theme.textTheme.titleMedium
-              ?.copyWith(fontWeight: FontWeight.w600)
-              .merge(_tabular),
-          child: SizedBox(
-            height: 28,
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: value,
+        const SizedBox(width: 16),
+        Expanded(
+          child: DefaultTextStyle.merge(
+            style: theme.textTheme.titleMedium,
+            child: SizedBox(
+              height: 28,
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: value,
+              ),
             ),
           ),
         ),
       ],
     );
-    if (onTap == null) {
-      return Padding(padding: const EdgeInsets.only(right: 8), child: content);
-    }
+    final padded = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: content,
+    );
+    if (onTap == null) return padded;
     return Tooltip(
       message: tooltip,
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: content,
-        ),
+        child: padded,
       ),
     );
   }
@@ -337,7 +326,7 @@ class _PingButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: state.pinging ? null : state.testPing,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(0, 2, 8, 2),
+          padding: const EdgeInsets.symmetric(vertical: 2),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -353,7 +342,7 @@ class _PingButton extends StatelessWidget {
               else
                 Icon(
                   Symbols.electric_bolt_rounded,
-                  size: 22,
+                  size: 18,
                   weight: 700,
                   color: color,
                 ),

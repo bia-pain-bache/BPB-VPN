@@ -73,7 +73,7 @@ ThemeData _buildTheme(ColorScheme scheme) {
   return ThemeData(
     colorScheme: scheme,
     useMaterial3: true,
-    fontFamily: 'OpenSans',
+    fontFamily: 'Baloo',
     listTileTheme: const ListTileThemeData(
       contentPadding: EdgeInsets.symmetric(horizontal: 20),
     ),
