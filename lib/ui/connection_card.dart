@@ -95,7 +95,7 @@ class ConnectionCard extends StatelessWidget {
               alignment: Alignment.topCenter,
               child: state.hasModeOption
                   ? const _Row(
-                      icon: Symbols.tune_rounded,
+                      icon: Symbols.instant_mix_rounded,
                       label: 'Mode',
                       selector: _ModeSelector(),
                     )

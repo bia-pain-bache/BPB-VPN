@@ -9,8 +9,8 @@ import 'local_proxy.dart';
 /// The two exit IPs the BPB panel shows: one for sites behind Cloudflare
 /// (reached through the worker's proxy IP) and one for all other sites.
 class MyIps {
-  final String? cloudflare;
-  final String? other;
+  final ({String ip, String? isp})? cloudflare;
+  final ({String ip, String? isp})? other;
   const MyIps({this.cloudflare, this.other});
 }
 

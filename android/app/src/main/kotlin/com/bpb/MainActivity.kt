@@ -227,7 +227,11 @@ class MainActivity : FlutterActivity() {
                 runInBackground(result) {
                     if (!CoreManager.controller.isRunning) throw IllegalStateException("Not connected")
                     val myIp = CoreManager.controller.getMyIp(url)
-                    mapOf("ip" to myIp.ip, "country_code" to myIp.countryCode)
+                    mapOf(
+                        "ip" to myIp.ip,
+                        "country_code" to myIp.countryCode,
+                        "organization_name" to myIp.isp
+                    )
                 }
             }
             "sshHostKey" -> runInBackground(result) {

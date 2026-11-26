@@ -248,14 +248,15 @@ class VpnChannel {
   }
 
   /// Get My IP through the running tunnel.
-  static Future<String?> getMyIp(String url) async {
+  static Future<({String ip, String? isp})?> getMyIp(String url) async {
     final geo = await _methods.invokeMapMethod<String, String>('getMyIp', {
       'url': url,
     });
     if (geo == null) return null;
     final flag = countryFlag(geo['country_code'] as String);
     final ip = geo['ip'] as String;
-    return '$flag $ip';
+    final isp = geo['organization_name'];
+    return (ip: '$flag $ip', isp: isp);
   }
 
   /// The SSH exit's server key (SHA256:…), pinned or learned on its first connection; "" if none.

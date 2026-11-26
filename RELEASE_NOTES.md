@@ -7,6 +7,9 @@
 - Handling SSH host key changes.
 - Added SSH key validatoin.
 - Updated Tor to 4.9.17
+- Updated UI.
+- Added ISP to connection metrics.
+- Added **Share proxy** to homepage instead of LAN IP.
 
 **Full Changelog**: https://github.com/bia-pain-bache/BPB-VPN/compare/v1.3.0...v1.3.1
 

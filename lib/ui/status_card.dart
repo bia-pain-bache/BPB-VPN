@@ -128,7 +128,7 @@ class _StatusCardState extends State<StatusCard> {
                                 children: [
                                   Icon(
                                     Symbols.timer_rounded,
-                                    size: 16,
+                                    size: 18,
                                     color: muted,
                                   ),
                                   const SizedBox(width: 5),
@@ -215,7 +215,13 @@ class _Metrics extends StatelessWidget {
       _Metric(
         icon: Symbols.location_on_rounded,
         label: 'My IP',
-        value: ip(ips?.other ?? (twoIps ? null : ips?.cloudflare)),
+        value: ip(ips?.other?.ip ?? (twoIps ? null : ips?.cloudflare?.ip)),
+        onTap: refreshIps,
+      ),
+      _Metric(
+        icon: Symbols.target,
+        label: 'ISP',
+        value: ip(ips?.other?.isp),
         onTap: refreshIps,
       ),
     ];
@@ -224,7 +230,7 @@ class _Metrics extends StatelessWidget {
         _Metric(
           icon: Symbols.location_on_rounded,
           label: 'My IP Cloudflare',
-          value: ip(ips?.cloudflare),
+          value: ip(ips?.cloudflare?.ip),
           onTap: refreshIps,
         ),
       );
