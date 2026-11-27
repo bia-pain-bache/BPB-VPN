@@ -624,6 +624,22 @@ class AppState extends ChangeNotifier {
           'Install the MITM certificate first: Settings → Serverless.',
         );
       }
+      final current = selected;
+      if (mode == ConnectionMode.worker &&
+          current != null &&
+          current.deployment.version < CloudflareApi.minWorkerVersion) {
+        if (isDeploying(current.account, current.deployment)) {
+          throw StateError(
+            'Worker is updating. Wait for the update to finish.',
+          );
+        }
+        final err = deployErrors[deploymentKey(current.account, current.deployment)];
+        throw StateError(
+          err != null
+              ? 'Worker update failed ($err). Update it first: Settings → Cloudflare accounts.'
+              : 'Update the worker first: Settings → Cloudflare accounts.',
+        );
+      }
       await _start();
     } catch (e) {
       status = VpnStatus.disconnected;
@@ -966,7 +982,11 @@ class AppState extends ChangeNotifier {
       } while (_deployAgain.contains(key));
     } catch (e) {
       _deployAgain.remove(key);
-      deployErrors[key] = e is CloudflareException ? e.message : '$e';
+      deployErrors[key] = e is CloudflareException
+          ? e.message
+          : isNetworkError(e)
+          ? "Can't reach Cloudflare."
+          : '$e';
     } finally {
       _deploying.remove(key);
       notifyListeners();

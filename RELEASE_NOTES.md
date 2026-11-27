@@ -11,8 +11,10 @@
 - Refined My IP, Added ISP to connection metrics.
 - Enabled My IP while not connected (local ISP).
 - Changed LAN IP to **Share proxy** on homepage.
+- Scanner now fetches assets from core instead of bundling IP CIDRs.
+- The app not reports any failures and prevent user to connect VLESS if the worker scripts' update fails.
 - Fixed **Domain Fronting + Psiphon** bug; much faster connection now.
 
-**Full Changelog**: https://github.com/bia-pain-bache/BPB-VPN/compare/v1.3.0...v1.3.1
+**Full Changelog**: https://github.com/bia-pain-bache/BPB-VPN/compare/v1.3.0...v1.3.2
 
-![GitHub Downloads (all assets, specific tag)](https://img.shields.io/github/downloads/bia-pain-bache/BPB-VPN/v1.3.1/total)
+![GitHub Downloads (all assets, specific tag)](https://img.shields.io/github/downloads/bia-pain-bache/BPB-VPN/v1.3.2/total)

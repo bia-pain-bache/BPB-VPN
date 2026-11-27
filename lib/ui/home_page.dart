@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../models/settings.dart';
+import '../services/cloudflare_api.dart';
 import '../state/app_state.dart';
 import 'chip_menu.dart';
 import 'config_view_page.dart';
@@ -73,6 +74,7 @@ class HomePage extends StatelessWidget {
           child: Column(
             children: [
               if (state.needsReconnect) const _ReconnectBanner(),
+              const _WorkerUpdateBanner(),
               const SizedBox(height: 16),
               const ConnectionCard(),
               const SizedBox(height: 16),
@@ -121,6 +123,69 @@ class _ReconnectBanner extends StatelessWidget {
           onPressed: state.reconnect,
           child: const Text('Apply'),
         ),
+      ),
+    );
+  }
+}
+
+class _WorkerUpdateBanner extends StatelessWidget {
+  const _WorkerUpdateBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    final s = state.selected;
+    if (s == null) return const SizedBox.shrink();
+
+    final key = AppState.deploymentKey(s.account, s.deployment);
+    final deploying = state.isDeploying(s.account, s.deployment);
+    final error = state.deployErrors[key];
+    final needsUpdate = s.deployment.version < CloudflareApi.minWorkerVersion;
+    if (error == null && !needsUpdate) return const SizedBox.shrink();
+
+    final scheme = Theme.of(context).colorScheme;
+    final title = deploying
+        ? 'Updating worker…'
+        : error != null
+        ? (needsUpdate ? 'Worker update failed' : 'Deploy failed')
+        : 'Worker update required';
+    final subtitle = deploying
+        ? 'Deploying the latest worker script.'
+        : error ?? 'Update the worker to connect with VLESS.';
+
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      shape: roundedShape(
+        kCardRadius,
+        side: BorderSide(
+          color: (error != null ? scheme.error : scheme.outlineVariant)
+              .withValues(alpha: 0.75),
+          width: 0.75,
+        ),
+      ),
+      color: scheme.surfaceContainer,
+      elevation: 0,
+      child: ListTile(
+        leading: Icon(
+          error != null ? Symbols.error_outline_rounded : Symbols.system_update_alt_rounded,
+          color: error != null ? scheme.error : scheme.primary,
+        ),
+        title: Text(title),
+        subtitle: Text(
+          subtitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: deploying
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : FilledButton.tonal(
+                onPressed: () => state.redeploy(s.account, s.deployment.type),
+                child: Text(error != null ? 'Retry' : 'Update'),
+              ),
       ),
     );
   }

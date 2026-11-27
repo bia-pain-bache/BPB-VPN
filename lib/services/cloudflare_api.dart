@@ -152,7 +152,9 @@ class CloudflareApi {
     }
     if (data != null && data['success'] == true) return data['result'];
     // Some endpoints (e.g. deleting a Workers custom domain) answer 2xx with an empty body.
-    if (data == null && response.statusCode >= 200 && response.statusCode < 300) {
+    if (data == null &&
+        response.statusCode >= 200 &&
+        response.statusCode < 300) {
       return null;
     }
     String describe(Map e) {

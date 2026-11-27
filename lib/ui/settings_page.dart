@@ -6,6 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../models/settings.dart';
 import '../models/theme_color.dart';
+import '../services/cloudflare_api.dart';
 import '../services/scanner_channel.dart';
 import '../services/updates.dart';
 import '../services/vpn_channel.dart';
@@ -1220,11 +1221,16 @@ class _DeploymentTile extends StatelessWidget {
     final key = AppState.deploymentKey(s.account, s.deployment);
     final deploying = state.isDeploying(s.account, s.deployment);
     final error = state.deployErrors[key];
+    final needsUpdate = s.deployment.version < CloudflareApi.minWorkerVersion;
     // Proxy IPs and the fallback website deploy right away; only a failure stays on screen.
     final status = deploying
         ? 'Deploying…'
+        : error != null
+        ? '${s.deployment.pending ? 'Not deployed' : 'Update failed'}: $error'
         : s.deployment.pending
-        ? 'Not deployed${error != null ? ': $error' : ' yet'}'
+        ? 'Not deployed yet'
+        : needsUpdate
+        ? 'Worker update required'
         : null;
     final all = s.account.deployments;
     return ListTile(
@@ -1252,7 +1258,7 @@ class _DeploymentTile extends StatelessWidget {
               height: 24,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : s.deployment.pending
+          : (s.deployment.pending || error != null || needsUpdate)
           ? IconButton(
               tooltip: 'Deploy again',
               icon: const Icon(Symbols.refresh_rounded),

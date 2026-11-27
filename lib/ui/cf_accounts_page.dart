@@ -118,6 +118,18 @@ class _AccountTileState extends State<_AccountTile> {
     final outdated = account.deployments
         .where(AppState.updateAvailable)
         .toList();
+    final errors = [
+      for (final d in account.deployments)
+        if (state.deployErrors[AppState.deploymentKey(account, d)] case final e?)
+          '${d.type.label}: $e',
+    ];
+    final toDeploy = account.deployments
+        .where(
+          (d) =>
+              AppState.updateAvailable(d) ||
+              state.deployErrors.containsKey(AppState.deploymentKey(account, d)),
+        )
+        .toList();
     final busy = _removing || account.deployments.any((d) => state.isDeploying(account, d));
     final scheme = theme.colorScheme;
     final inUse = state.selected?.account.id == account.id;
@@ -131,7 +143,12 @@ class _AccountTileState extends State<_AccountTile> {
         color: inUse ? scheme.primary : scheme.outline,
       ),
       title: Text(account.label, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: outdated.isEmpty
+      subtitle: errors.isNotEmpty
+          ? Text(
+              errors.join('\n'),
+              style: TextStyle(color: scheme.error),
+            )
+          : outdated.isEmpty
           ? null
           : Text(
               'Worker update available',
@@ -149,14 +166,14 @@ class _AccountTileState extends State<_AccountTile> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             )
-          else if (outdated.isNotEmpty)
+          else if (toDeploy.isNotEmpty)
             TextButton(
               onPressed: () {
-                for (final d in outdated) {
+                for (final d in toDeploy) {
                   state.redeploy(account, d.type);
                 }
               },
-              child: const Text('Update'),
+              child: Text(outdated.isNotEmpty ? 'Update' : 'Retry'),
             ),
           IconButton(
             tooltip: 'Remove account',
