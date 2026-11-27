@@ -176,14 +176,38 @@ class ScannerAssets {
     8886,
   ];
 
+  /// WARP's endpoint ranges. The VLESS pool is geoip:cloudflare ([ScannerChannel.vlessCidrs]).
+  static const warpCidrs = [
+    '162.159.192.0/24',
+    '162.159.193.0/24',
+    '162.159.195.0/24',
+    '162.159.204.0/24',
+    '162.159.198.0/24',
+    '188.114.96.0/24',
+    '188.114.97.0/24',
+    '188.114.98.0/24',
+    '188.114.99.0/24',
+    '8.6.112.0/24',
+    '8.34.70.0/24',
+    '8.34.146.0/24',
+    '8.35.211.0/24',
+    '8.39.125.0/24',
+    '8.39.204.0/24',
+    '8.39.214.0/24',
+    '8.47.69.0/24',
+    '2606:4700:d0::/48',
+    '2606:4700:100::/48',
+    '2606:4700:102::/48',
+    '2606:4700:103::/48',
+  ];
+
   static Future<List<String>> loadCidrs({required bool warpLike}) async {
     final raw = warpLike
-        ? await rootBundle.loadString('assets/scanner/warp-cidrs.txt')
-        : await ScannerChannel.vlessCidrs();
+        ? warpCidrs
+        : (await ScannerChannel.vlessCidrs()).split('\n');
     final cidrs = raw
-        .split(RegExp(r'\r?\n'))
         .map((line) => line.trim())
-        .where((line) => line.isNotEmpty && !line.startsWith('#'))
+        .where((line) => line.isNotEmpty)
         .toSet()
         .toList();
     if (cidrs.isEmpty) {

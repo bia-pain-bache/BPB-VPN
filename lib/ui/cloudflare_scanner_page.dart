@@ -635,7 +635,7 @@ class _CloudflareScannerPageState extends State<CloudflareScannerPage> {
             const Padding(
               padding: EdgeInsets.all(24),
               child: Text(
-                'No CIDR asset is available. Rebuild the app after fetching scanner CIDRs.',
+                'No CIDRs available. Update the geo assets in Settings.',
               ),
             ),
         ],

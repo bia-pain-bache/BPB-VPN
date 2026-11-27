@@ -46,10 +46,6 @@ jobs:
           go-version: stable
           cache: false
 
-      - name: Validate bundled scanner CIDRs
-        working-directory: core
-        run: go run ./scanner/cmd/normalize_scanner_cidrs --check ../assets/scanner
-
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.47.7

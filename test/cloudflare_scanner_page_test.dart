@@ -42,9 +42,6 @@ void main() {
       messenger.setMockMethodCallHandler(methods, null);
       messenger.setMockMethodCallHandler(events, null);
     });
-    await tester.runAsync(
-      () => rootBundle.loadString('assets/scanner/warp-cidrs.txt'),
-    );
     await tester.pumpWidget(
       AppScope(
         state: _ScannerTestState(),
@@ -146,9 +143,6 @@ void main() {
       messenger.setMockMethodCallHandler(methods, null);
       messenger.setMockMethodCallHandler(events, null);
     });
-    await tester.runAsync(
-      () => rootBundle.loadString('assets/scanner/warp-cidrs.txt'),
-    );
     await tester.pumpWidget(
       AppScope(
         state: _ScannerTestState(),
@@ -226,9 +220,6 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       if (protocol.isWarpLike) {
-        await tester.runAsync(
-          () => rootBundle.loadString('assets/scanner/warp-cidrs.txt'),
-        );
       }
       await tester.pumpWidget(
         AppScope(
@@ -275,9 +266,6 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.runAsync(
-      () => rootBundle.loadString('assets/scanner/warp-cidrs.txt'),
-    );
     await tester.pumpWidget(
       AppScope(
         state: AppState(),
@@ -346,9 +334,6 @@ void main() {
   testWidgets('custom CIDRs persist on the page and selected entries lead', (
     tester,
   ) async {
-    await tester.runAsync(
-      () => rootBundle.loadString('assets/scanner/warp-cidrs.txt'),
-    );
     await tester.pumpWidget(
       AppScope(
         state: AppState(),
@@ -436,9 +421,6 @@ void main() {
   testWidgets('selected CIDR remains visible after selecting from lower down', (
     tester,
   ) async {
-    await tester.runAsync(
-      () => rootBundle.loadString('assets/scanner/warp-cidrs.txt'),
-    );
     await tester.pumpWidget(
       AppScope(
         state: AppState(),
