@@ -64,6 +64,13 @@ ThemeData buildTheme(Brightness brightness, ThemeColor color) {
   return theme;
 }
 
+/// Scales the localized theme's Baloo [TextTheme] styles by 1.1× without touching
+/// explicit `monospace` styles or overriding system accessibility text scaling.
+ThemeData scaleThemeText(ThemeData theme) => theme.copyWith(
+  textTheme: theme.textTheme.apply(fontSizeFactor: 1.1),
+  primaryTextTheme: theme.primaryTextTheme.apply(fontSizeFactor: 1.1),
+);
+
 ThemeData _buildTheme(ColorScheme scheme) {
   final inputDecoration = InputDecorationTheme(
     border: OutlineInputBorder(

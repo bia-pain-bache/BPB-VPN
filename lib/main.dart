@@ -28,18 +28,13 @@ class BpbApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           // Android can draw the app into the navigation bar area (notably with
           // gesture navigation). Keep every route's content above that inset.
-          builder: (context, child) {
-            final mediaQuery = MediaQuery.of(context);
-            return MediaQuery(
-              data: mediaQuery.copyWith(
-                textScaler: const TextScaler.linear(1.1),
-              ),
-              child: SafeArea(
-                top: false,
-                child: child ?? const SizedBox.shrink(),
-              ),
-            );
-          },
+          builder: (context, child) => Theme(
+            data: scaleThemeText(Theme.of(context)),
+            child: SafeArea(
+              top: false,
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
           theme: buildTheme(Brightness.light, state.themeColor.value),
           darkTheme: buildTheme(Brightness.dark, state.themeColor.value),
           themeMode: state.themeMode.value,

@@ -273,6 +273,7 @@ class _Metric extends StatelessWidget {
     final content = Row(
       children: [
         Expanded(
+          flex: 4,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -297,6 +298,7 @@ class _Metric extends StatelessWidget {
         ),
         const SizedBox(width: 16),
         Expanded(
+          flex: 6,
           child: Align(
             alignment: AlignmentDirectional.centerEnd,
             child: DefaultTextStyle.merge(
