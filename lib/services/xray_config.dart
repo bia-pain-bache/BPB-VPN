@@ -4,7 +4,7 @@ import 'dart:math';
 
 import '../models/settings.dart';
 import 'chain_proxy.dart';
-import 'domain_fronting_v23.dart';
+import 'domain_fronting.dart';
 import 'masque.dart';
 import 'proxy_uri.dart';
 import 'public_dns.dart';
@@ -99,7 +99,7 @@ enum MasqueVariant {
 }
 
 /// Serverless configs: packet obfuscation (TLS fragmentation for TCP and UDP noise), or
-/// patterniha's MITM domain fronting (browsers only: it decrypts their TLS with the app's own CA,
+/// MITM domain fronting (browsers only: it decrypts their TLS with the app's own CA,
 /// see MitmCa).
 enum ServerlessMode {
   dns('DNS'),
@@ -269,10 +269,10 @@ class XrayConfigBuilder {
   ConnectionMode _mode = ConnectionMode.worker;
 
   /// Domain Fronting's config, parsed while building it.
-  Map<String, dynamic>? _v23;
+  Map<String, dynamic>? _df;
 
   /// Domain Fronting with a Psiphon / Tor exit: the regular config, the exit's connections fronted.
-  bool get _frontedExit => _v23 != null && _chainedExit;
+  bool get _frontedExit => _df != null && _chainedExit;
 
   /// Anti-sanction DNS and rules: only with WARP / MASQUE / Serverless and the Default exit node
   /// (with Psiphon, Tor or a chain proxy those sites go through the exit like everything else).
@@ -754,16 +754,16 @@ class XrayConfigBuilder {
     return XrayBuild(config);
   }
 
-  /// patterniha's config ([domainFrontingV23]) as is, with the app's TUN and mixed inbounds
+  /// ([domainFronting]) config as is, with the app's TUN and mixed inbounds
   /// (sniffing like its mixed-in), log level and traffic stats. Its TLS-decrypting inbounds
   /// read the CA from bpb-cert.crt / bpb-cert.key in Xray's certificate location.
   ///
   /// With a Psiphon / Tor exit, the fronting only connects the exit: the config is the regular
   /// one with that exit (your traffic follows the routing settings into it, never decrypted),
-  /// plus v23's decrypting inbounds and fronting outbounds for the exit's own connections, and
-  /// v23's fronted DoH as the remote DNS (see [_frontingRules], [_buildDns]).
+  /// plus decrypting inbounds and fronting outbounds for the exit's own connections, and
+  /// domain fronting fronted DoH as the remote DNS (see [_frontingRules], [_buildDns]).
   Future<XrayBuild> _buildDomainFronting() async {
-    final config = _v23 = jsonDecode(domainFrontingV23) as Map<String, dynamic>;
+    final config = _df = jsonDecode(domainFronting) as Map<String, dynamic>;
 
     final geo = _geoAssets();
     final routing = profile.routing;
@@ -1127,7 +1127,7 @@ class XrayConfigBuilder {
     String? domainToStaticIPs,
   ) async {
     final ipv6 = _general.enableIpv6;
-    // Serverless: always the system's resolver ("localhost", outside Xray's routing), like v23.
+    // Serverless: always the system's resolver ("localhost", outside Xray's routing), like domain fronting.
     final generalRemoteDns = _general.remoteDns;
     final remoteDns = isWarp ? generalRemoteDns : 'tcp://$generalRemoteDns';
     final localDNS = _general.localDns;

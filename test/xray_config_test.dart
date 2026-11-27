@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:bpb/models/settings.dart';
 import 'package:bpb/services/chain_proxy.dart';
-import 'package:bpb/services/domain_fronting_v23.dart';
+import 'package:bpb/services/domain_fronting.dart';
 import 'package:bpb/services/mitm_ca.dart';
 import 'package:bpb/services/proxy_uri.dart';
 import 'package:bpb/services/warp.dart';
@@ -912,13 +912,13 @@ void main() {
       'connection': {'serverlessMode': 'domainFronting'},
     };
 
-    test("adds the app's routing, DNS, inbounds, log and stats to patterniha's v23 config", () async {
+    test("adds the app's routing, DNS, inbounds, log and stats to domain fronting config", () async {
       final b = await builder(
         everything,
         fronting,
       ).build(ConnectionMode.serverless);
       final c = b.config;
-      final original = jsonDecode(domainFrontingV23) as Map<String, dynamic>;
+      final original = jsonDecode(domainFronting) as Map<String, dynamic>;
       expect(c['__Credits__'], original['__Credits__']);
       final rules = (c['routing']['rules'] as List).cast<Map>();
       expect(rules.first, {'port': 53, 'outboundTag': 'dns-out'});
@@ -1020,8 +1020,8 @@ void main() {
     });
 
     test("Psiphon / Tor exit: the regular config, only the exit's own connections fronted", () async {
-      final original = jsonDecode(domainFrontingV23) as Map<String, dynamic>;
-      final v23Rules = (original['routing']['rules'] as List).cast<Map>();
+      final original = jsonDecode(domainFronting) as Map<String, dynamic>;
+      final domainFrontingRules = (original['routing']['rules'] as List).cast<Map>();
       for (final exit in ['psiphon']) {
         final b = await builder(
           {
@@ -1093,12 +1093,12 @@ void main() {
             .cast<Map>()
             .map((r) => {...r}..remove('type'))
             .toList();
-        final redirects = v23Rules
+        final redirects = domainFrontingRules
             .where(
               (r) => (r['outboundTag'] as String).startsWith('redirect-out-'),
             )
             .toList();
-        final decrypted = v23Rules
+        final decrypted = domainFrontingRules
             .where(
               (r) =>
                   (r['inboundTag'] as List?)?.any(
@@ -1115,7 +1115,7 @@ void main() {
             'port': 53,
             'outboundTag': 'dns-out',
           },
-          v23Rules.firstWhere(
+          domainFrontingRules.firstWhere(
             (r) =>
                 (r['inboundTag'] as List?)?.contains('no-filter-dns') ?? false,
           ),
@@ -1208,7 +1208,7 @@ void main() {
         final local = withSettingsServers.where(
           (s) => s['address'] == 'localhost',
         );
-        // FakeDNS covers v23's fixed host plus configured explicit bypass domains.
+        // FakeDNS covers domain fronting fixed host plus configured explicit bypass domains.
         expect(withSettingsServers.first, {
           'tag': 'fake-dns',
           'address': 'fakedns',
@@ -1228,7 +1228,6 @@ void main() {
         expect(servers.firstWhere((s) => s['tag'] == 'no-filter-dns'), {
           'address': 'h2c://1.1.1.1/dns-query',
           'tag': 'no-filter-dns',
-          'timeoutMs': 6000,
           'finalQuery': true,
         });
         expect(dns['tag'], isNull);
@@ -1252,7 +1251,6 @@ void main() {
           dns['hosts']['dns.redirect'],
           original['dns']['hosts']['dns.redirect'],
         );
-        expect(dns['hosts']['fastly.redirect'], 'github.githubassets.com');
         expect(
           servers.any(
             (s) =>

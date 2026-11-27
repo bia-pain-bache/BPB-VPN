@@ -1,22 +1,15 @@
-/// Modified patterniha's MITM-DomainFronting Xray config, v23, as published
+/// Modified patterniha's MITM-DomainFronting Xray config, as published
 /// (https://github.com/patterniha/MITM-DomainFronting, Xray-config/MITM-DomainFronting.json,
 /// GPL-3.0), adapted for the app's exit routing, DNS, certificate files and traffic stats.
 /// XrayConfigBuilder supplies the app's inbounds and, when selected, the exit.
-const domainFrontingV23 = r'''
+const domainFronting = r'''
 {
-  "__Credits__": {
-    "creator": "@patterniha",
-    "donate1": "USDT (BEP20): 0x76a768B53Ca77B43086946315f0BDF21156bF424",
-    "donate2": "USDT (TRC20): TU5gKvKqcXPn8itp1DouBCwcqGHMemBm8o",
-    "donate3": "TON (TON): UQAc-mZB3y7uxWHKiMmq0ORZEYgycWDWZ4V1k73HsXvTJx-i"
-  },
   "log": {
     "loglevel": "warning",
     "dnsLog": false
   },
   "dns": {
     "hosts": {
-      "fastly.redirect": "github.githubassets.com",
       "dns.redirect": [
         "1.1.1.1",
         "1.0.0.1"
@@ -33,7 +26,6 @@ const domainFrontingV23 = r'''
       {
         "tag": "no-filter-dns",
         "address": "h2c://1.1.1.1/dns-query",
-        "timeoutMs": 6000,
         "finalQuery": true
       },
       {
@@ -214,7 +206,7 @@ const domainFrontingV23 = r'''
       "tag": "tls-repack-fastly",
       "protocol": "direct",
       "settings": {
-        "redirect": "fastly.redirect:443"
+        "redirect": "github.githubassets.com:443"
       },
       "streamSettings": {
         "security": "tls",
