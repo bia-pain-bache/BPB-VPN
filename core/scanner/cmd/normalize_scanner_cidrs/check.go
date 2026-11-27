@@ -11,14 +11,14 @@ import (
 )
 
 func checkAssets(directory string) error {
-	for _, name := range []string{"vless-cidrs.txt", "warp-cidrs.txt"} {
-		info, err := os.Lstat(filepath.Join(directory, name))
-		if err != nil {
-			return fmt.Errorf("required CIDR asset %s: %w", name, err)
-		}
-		if !info.Mode().IsRegular() {
-			return fmt.Errorf("required CIDR asset %s is not a regular file", name)
-		}
+	// Only WARP's list is bundled; the VLESS pool is geoip:cloudflare from geoip.dat (xray.GeoIPCIDRs).
+	const name = "warp-cidrs.txt"
+	info, err := os.Lstat(filepath.Join(directory, name))
+	if err != nil {
+		return fmt.Errorf("required CIDR asset %s: %w", name, err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("required CIDR asset %s is not a regular file", name)
 	}
 	return filepath.WalkDir(directory, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {

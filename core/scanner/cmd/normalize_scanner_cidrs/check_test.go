@@ -16,19 +16,18 @@ func writeAsset(t *testing.T, dir, name, content string) {
 
 func TestCheckAssetsValidatesAllFilesWithoutModifyingThem(t *testing.T) {
 	dir := t.TempDir()
-	vless := "# manually maintained\n192.0.2.1/24\n2001:db8::/32\n"
-	writeAsset(t, dir, "vless-cidrs.txt", vless)
-	writeAsset(t, dir, "warp-cidrs.txt", "198.51.100.0/24\n")
+	warp := "# manually maintained\n192.0.2.1/24\n2001:db8::/32\n"
+	writeAsset(t, dir, "warp-cidrs.txt", warp)
 	writeAsset(t, dir, "extra.txt", "203.0.113.0/24\n")
 
 	if err := checkAssets(dir); err != nil {
 		t.Fatal(err)
 	}
-	got, err := os.ReadFile(filepath.Join(dir, "vless-cidrs.txt"))
+	got, err := os.ReadFile(filepath.Join(dir, "warp-cidrs.txt"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != vless {
+	if string(got) != warp {
 		t.Fatal("check modified the source file")
 	}
 	writeAsset(t, dir, "extra.txt", "not a CIDR\n")
@@ -48,7 +47,6 @@ func TestCheckAssetsRejectsInvalidRuntimeInputs(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
-			writeAsset(t, dir, "vless-cidrs.txt", "192.0.2.0/24\n")
 			writeAsset(t, dir, "warp-cidrs.txt", tc.input)
 			if err := checkAssets(dir); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("error = %v, want %q", err, tc.want)
@@ -57,9 +55,9 @@ func TestCheckAssetsRejectsInvalidRuntimeInputs(t *testing.T) {
 	}
 }
 
-func TestCheckAssetsRequiresBothBundledFiles(t *testing.T) {
+func TestCheckAssetsRequiresTheBundledWarpFile(t *testing.T) {
 	dir := t.TempDir()
-	writeAsset(t, dir, "vless-cidrs.txt", "192.0.2.0/24\n")
+	writeAsset(t, dir, "extra.txt", "192.0.2.0/24\n")
 	if err := checkAssets(dir); err == nil || !strings.Contains(err.Error(), "warp-cidrs.txt") {
 		t.Fatalf("missing asset error = %v", err)
 	}

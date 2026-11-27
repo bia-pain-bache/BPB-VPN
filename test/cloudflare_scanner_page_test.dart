@@ -225,13 +225,11 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.runAsync(
-        () => rootBundle.loadString(
-          protocol.isWarpLike
-              ? 'assets/scanner/warp-cidrs.txt'
-              : 'assets/scanner/vless-cidrs.txt',
-        ),
-      );
+      if (protocol.isWarpLike) {
+        await tester.runAsync(
+          () => rootBundle.loadString('assets/scanner/warp-cidrs.txt'),
+        );
+      }
       await tester.pumpWidget(
         AppScope(
           state: AppState(),

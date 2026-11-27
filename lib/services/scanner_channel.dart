@@ -89,6 +89,12 @@ class ScannerChannel {
     if (error != null && error.isNotEmpty) throw StateError(error);
   }
 
+  /// geoip:cloudflare from the geoip.dat Xray routes with, one CIDR per line.
+  static Future<String> vlessCidrs() async {
+    _requirePlatform();
+    return await _methods.invokeMethod<String>('scannerCidrs') ?? '';
+  }
+
   static Future<void> pause() => _call('scannerPause');
   static Future<void> resume() => _call('scannerResume');
   static Future<void> stop() => _call('scannerStop');
@@ -171,11 +177,9 @@ class ScannerAssets {
   ];
 
   static Future<List<String>> loadCidrs({required bool warpLike}) async {
-    final raw = await rootBundle.loadString(
-      warpLike
-          ? 'assets/scanner/warp-cidrs.txt'
-          : 'assets/scanner/vless-cidrs.txt',
-    );
+    final raw = warpLike
+        ? await rootBundle.loadString('assets/scanner/warp-cidrs.txt')
+        : await ScannerChannel.vlessCidrs();
     final cidrs = raw
         .split(RegExp(r'\r?\n'))
         .map((line) => line.trim())
@@ -183,7 +187,7 @@ class ScannerAssets {
         .toSet()
         .toList();
     if (cidrs.isEmpty) {
-      throw StateError('The bundled scanner CIDR list is empty.');
+      throw StateError('The scanner CIDR list is empty.');
     }
     return cidrs;
   }

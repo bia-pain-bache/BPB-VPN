@@ -238,6 +238,11 @@ class MainActivity : FlutterActivity() {
                 // The SSH exit's server key, for the app to remember ("" when there is none).
                 CoreManager.controller.sshHostKey()
             }
+            "scannerCidrs" -> runInBackground(result) {
+                // The VLESS scan pool: geoip:cloudflare from the geoip.dat Xray routes with.
+                CoreManager.initEnv(this)
+                Xray.geoIPCIDRs("cloudflare")
+            }
             "scannerStart" -> {
                 val config = call.argument<String>("config")
                 if (config.isNullOrEmpty()) {
